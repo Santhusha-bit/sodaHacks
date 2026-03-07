@@ -1,0 +1,24 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Environment secrets — NEVER commit this
+.env
+
+# Pytest
+.pytest_cache/
+.coverage
+
+# macOS
+.DS_Store
+
+# Logs
+agent.log
+*.log

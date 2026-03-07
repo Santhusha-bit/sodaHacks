@@ -8,7 +8,10 @@ connects to ws://localhost:8765 to receive live JSON state updates.
 import asyncio
 import json
 import logging
-from typing import Optional, Any
+from typing import Any, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from websockets.server import WebSocketServer
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +29,7 @@ class DashboardServer:
     def __init__(self, port: int = 8765):
         self.port = port
         self._clients: set = set()
-        self._server = None
+        self._server: Optional["WebSocketServer"] = None
         self._last_state: dict = {}
 
     async def start(self):
@@ -36,9 +39,10 @@ class DashboardServer:
         logger.info(f"[WS] Dashboard server on ws://localhost:{self.port}")
 
     async def stop(self):
-        if self._server:
-            self._server.close()
-            await self._server.wait_closed()
+        server = self._server
+        if server is not None:
+            server.close()
+            await server.wait_closed()
 
     async def broadcast(self, state: dict[str, Any]):
         """Send state update to all connected dashboard clients."""

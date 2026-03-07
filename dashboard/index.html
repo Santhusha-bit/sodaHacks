@@ -3,372 +3,359 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Safety Agent Dashboard</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <title>Pedestrian Navigation Agent</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #0a0b0f;
-      --card: #12141a;
-      --card2: #1a1d26;
-      --border: #232635;
-      --text: #e8eaf0;
-      --muted: #6b7280;
-      --accent: #6c63ff;
-
-      --safe-color: #22d3a0;
-      --caution-color: #f59e0b;
-      --danger-color: #ef4444;
-
-      --radius: 16px;
-      --font: 'Inter', sans-serif;
-      --mono: 'JetBrains Mono', monospace;
+      --safe:    #00e676;
+      --caution: #ffb300;
+      --danger:  #ff1744;
+      --bg:      #080c14;
+      --card:    #0d1421;
+      --border:  #1e2d45;
+      --text:    #c8d8f0;
+      --muted:   #4a6080;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
+      font-family: 'Inter', sans-serif;
       background: var(--bg);
       color: var(--text);
-      font-family: var(--font);
       min-height: 100vh;
       padding: 24px;
     }
 
-    /* ── Header ──────────────────────────────────────────────────────────── */
+    /* ── Header ─────────────────────────────────────────────────── */
     header {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: 16px;
       margin-bottom: 28px;
-      flex-wrap: wrap;
-      gap: 12px;
     }
-
-    .header-left { display: flex; align-items: center; gap: 14px; }
-    .logo { font-size: 28px; }
-    h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.3px; }
-    h1 span { color: var(--accent); }
-
-    .conn-badge {
-      display: flex; align-items: center; gap: 6px;
-      padding: 6px 14px; border-radius: 999px;
-      font-size: 0.78rem; font-weight: 600;
-      border: 1px solid var(--border);
-      background: var(--card2);
-      transition: all 0.3s;
+    .logo {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, #1565c0, #0d47a1);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
     }
-    .conn-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--muted);
-      transition: background 0.3s;
-    }
-    .conn-badge.connected .conn-dot { background: var(--safe-color); }
-    .conn-badge.connected { border-color: var(--safe-color); color: var(--safe-color); }
+    header h1 { font-size: 22px; font-weight: 700; color: #e8f0ff; }
+    header p  { font-size: 13px; color: var(--muted); margin-top: 2px; }
 
-    /* ── Grid Layout ─────────────────────────────────────────────────────── */
+    .ws-badge {
+      margin-left: auto;
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 600;
+      background: #1a2a1a;
+      color: #4caf50;
+      border: 1px solid #2a4a2a;
+      transition: all .3s;
+    }
+    .ws-badge.disconnected { background:#2a1a1a; color:#f44336; border-color:#4a2a2a; }
+
+    /* ── Grid ────────────────────────────────────────────────────── */
     .grid {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      grid-template-rows: auto auto auto;
-      gap: 20px;
+      grid-template-columns: 340px 1fr;
+      grid-template-rows: auto auto 1fr;
+      gap: 16px;
     }
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
 
-    @media (max-width: 900px) {
-      .grid { grid-template-columns: 1fr 1fr; }
-    }
-    @media (max-width: 600px) {
-      .grid { grid-template-columns: 1fr; }
-    }
-
+    /* ── Cards ───────────────────────────────────────────────────── */
     .card {
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
+      border-radius: 18px;
       padding: 22px;
-      position: relative;
-      overflow: hidden;
     }
-
-    .card-label {
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: 0.12em;
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .12em;
       text-transform: uppercase;
       color: var(--muted);
-      margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      margin-bottom: 16px;
     }
 
-    /* ── Hazard Level Card (span 2 columns) ──────────────────────────────── */
-    .hazard-card {
-      grid-column: span 2;
-      display: flex;
-      align-items: center;
-      gap: 24px;
-      padding: 28px;
+    /* ── Crossing Status (hero) ──────────────────────────────────── */
+    #crossing-card {
+      grid-column: 1;
+      grid-row: 1;
+      text-align: center;
+      padding: 30px 22px;
     }
-
-    .hazard-ring {
-      width: 110px;
-      height: 110px;
+    .crossing-ring {
+      width: 160px; height: 160px;
       border-radius: 50%;
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2rem;
-      font-weight: 900;
-      letter-spacing: -1px;
-      border: 4px solid transparent;
-      transition: all 0.5s ease;
+      margin: 0 auto 20px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      border: 5px solid transparent;
       position: relative;
+      transition: background .4s, box-shadow .4s, border-color .4s;
+      background: #0a1522;
     }
-
-    .hazard-ring::before {
+    .crossing-ring::before {
       content: '';
-      position: absolute;
-      inset: -6px;
+      position: absolute; inset: -8px;
       border-radius: 50%;
       border: 3px solid transparent;
-      animation: ringPulse 2s infinite;
+      animation: spin 3s linear infinite;
+    }
+    .crossing-icon { font-size: 56px; line-height: 1; }
+    .crossing-label {
+      font-size: 14px; font-weight: 700;
+      letter-spacing: .06em;
+      margin-top: 6px;
+    }
+    .crossing-ring.safe    { border-color: var(--safe);    box-shadow: 0 0 40px rgba(0,230,118,.25); }
+    .crossing-ring.safe::before { border-top-color: var(--safe); }
+    .crossing-ring.caution { border-color: var(--caution); box-shadow: 0 0 40px rgba(255,179,0,.25); }
+    .crossing-ring.caution::before { border-top-color: var(--caution); }
+    .crossing-ring.danger  { border-color: var(--danger);  box-shadow: 0 0 40px rgba(255,23,68,.30); animation: danger-pulse 0.8s ease-in-out infinite; }
+    .crossing-ring.danger::before { display:none; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes danger-pulse {
+      0%,100% { box-shadow: 0 0 30px rgba(255,23,68,.3); }
+      50%      { box-shadow: 0 0 60px rgba(255,23,68,.7); }
     }
 
-    @keyframes ringPulse {
-      0%, 100% { opacity: 0.4; transform: scale(1); }
-      50% { opacity: 1; transform: scale(1.06); }
-    }
-
-    .hazard-ring.safe {
-      color: var(--safe-color);
-      border-color: var(--safe-color);
-      background: rgba(34, 211, 160, 0.08);
-      box-shadow: 0 0 30px rgba(34, 211, 160, 0.2);
-    }
-    .hazard-ring.safe::before { border-color: var(--safe-color); }
-
-    .hazard-ring.caution {
-      color: var(--caution-color);
-      border-color: var(--caution-color);
-      background: rgba(245, 158, 11, 0.08);
-      box-shadow: 0 0 30px rgba(245, 158, 11, 0.25);
-    }
-    .hazard-ring.caution::before { border-color: var(--caution-color); animation-duration: 1s; }
-
-    .hazard-ring.danger {
-      color: var(--danger-color);
-      border-color: var(--danger-color);
-      background: rgba(239, 68, 68, 0.1);
-      box-shadow: 0 0 40px rgba(239, 68, 68, 0.35);
-      animation: dangerPulse 0.7s infinite;
-    }
-    .hazard-ring.danger::before { border-color: var(--danger-color); animation-duration: 0.6s; }
-
-    @keyframes dangerPulse {
-      0%, 100% { box-shadow: 0 0 30px rgba(239,68,68,0.3); }
-      50% { box-shadow: 0 0 60px rgba(239,68,68,0.6); }
-    }
-
-    .hazard-info { flex: 1; }
-    .hazard-title { font-size: 2rem; font-weight: 900; letter-spacing: -1px; transition: color 0.5s; }
-    .hazard-subtitle { font-size: 0.85rem; color: var(--muted); margin-top: 4px; }
-    .hazard-reasons { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
-    .reason-tag {
-      font-size: 0.73rem; padding: 4px 10px; border-radius: 999px;
-      background: var(--card2); border: 1px solid var(--border);
-      color: var(--muted);
-    }
-
-    /* ── Speech / Alert Card ─────────────────────────────────────────────── */
-    .speech-card { grid-column: span 1; }
-    #speech-text {
-      font-size: 0.9rem;
-      line-height: 1.6;
-      color: var(--text);
-      min-height: 56px;
+    .speech-bubble {
+      margin-top: 16px;
+      background: #0a1a2a;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #bdd0f0;
+      min-height: 52px;
+      text-align: left;
       font-style: italic;
     }
-    .speech-icon { font-size: 1.2rem; }
 
-    /* ── Emotion Card ────────────────────────────────────────────────────── */
-    .emotion-card {}
-
-    .emotion-bars { display: flex; flex-direction: column; gap: 10px; }
-    .emotion-row { display: flex; align-items: center; gap: 10px; }
-    .emotion-label { font-size: 0.73rem; width: 50px; color: var(--muted); flex-shrink: 0; }
-    .bar-bg {
-      flex: 1; height: 8px; border-radius: 999px;
-      background: var(--card2); overflow: hidden;
+    /* ── Distance ────────────────────────────────────────────────── */
+    #distance-card { grid-column: 1; grid-row: 2; }
+    .distance-display {
+      display: flex; align-items: baseline; gap: 8px;
+      margin-top: 4px;
     }
-    .bar-fill {
-      height: 100%; border-radius: 999px;
-      transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+    .distance-value {
+      font-size: 52px; font-weight: 900;
+      color: #e8f0ff;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
     }
-    .bar-fill.stress { background: linear-gradient(90deg, #f59e0b, #ef4444); }
-    .bar-fill.calm   { background: linear-gradient(90deg, #22d3a0, #6c63ff); }
-    .bar-fill.fear   { background: linear-gradient(90deg, #ef4444, #7c3aed); }
-    .emotion-val { font-size: 0.73rem; color: var(--muted); width: 36px; text-align: right; font-family: var(--mono); }
-
-    /* ── Traffic Card ────────────────────────────────────────────────────── */
-    .traffic-card { grid-column: span 2; }
-    #traffic-list { display: flex; flex-direction: column; gap: 8px; min-height: 50px; }
-
-    .traffic-item {
-      display: flex; align-items: flex-start; gap: 10px;
-      padding: 10px 14px; border-radius: 10px;
-      background: var(--card2); border: 1px solid var(--border);
-      font-size: 0.82rem;
-      animation: fadeIn 0.3s ease;
+    .distance-unit { font-size: 18px; color: var(--muted); }
+    .distance-bar-wrap {
+      margin-top: 14px;
+      background: #0a1522;
+      border-radius: 100px;
+      height: 8px;
+      overflow: hidden;
     }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-
-    .sev-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
-    .sev-high   { background: var(--danger-color); }
-    .sev-medium { background: var(--caution-color); }
-    .sev-low    { background: var(--safe-color); }
-
-    .traffic-desc { flex: 1; color: var(--text); }
-    .traffic-loc  { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
-
-    .no-alerts { color: var(--muted); font-size: 0.85rem; font-style: italic; }
-
-    /* ── PIR Card ────────────────────────────────────────────────────────── */
-    .pir-card {}
-    .pir-indicator {
-      width: 72px; height: 72px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      margin: 8px auto;
-      font-size: 1.8rem;
-      background: var(--card2);
-      border: 3px solid var(--border);
-      transition: all 0.4s ease;
+    .distance-bar {
+      height: 100%;
+      border-radius: 100px;
+      transition: width .3s, background .3s;
+      background: var(--safe);
     }
-    .pir-indicator.active {
-      background: rgba(239, 68, 68, 0.12);
-      border-color: var(--danger-color);
-      box-shadow: 0 0 24px rgba(239, 68, 68, 0.3);
-      animation: pirPulse 0.5s ease infinite alternate;
-    }
-    @keyframes pirPulse {
-      from { transform: scale(1); }
-      to   { transform: scale(1.08); }
-    }
-    #pir-label { text-align: center; font-size: 0.8rem; color: var(--muted); margin-top: 6px; }
 
-    /* ── Event Log ───────────────────────────────────────────────────────── */
-    .log-card { grid-column: span 3; }
-    @media (max-width: 900px) { .log-card { grid-column: span 2; } }
-    @media (max-width: 600px) { .log-card { grid-column: span 1; } }
-
-    #event-log {
-      font-family: var(--mono);
-      font-size: 0.73rem;
-      color: var(--muted);
-      max-height: 160px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column-reverse;
-      gap: 3px;
+    /* ── Traffic Light ───────────────────────────────────────────── */
+    #light-card { grid-column: 2; grid-row: 1; }
+    .lights-row {
+      display: flex; gap: 20px;
+      align-items: flex-start;
+      flex-wrap: wrap;
     }
-    .log-entry { line-height: 1.5; }
-    .log-entry .ts { color: #404558; margin-right: 8px; }
-    .log-entry .msg-safe    { color: var(--safe-color); }
-    .log-entry .msg-caution { color: var(--caution-color); }
-    .log-entry .msg-danger  { color: var(--danger-color); }
-
-    /* ── Haptic Chip ─────────────────────────────────────────────────────── */
-    #haptic-chip {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 5px 12px; border-radius: 999px;
-      font-family: var(--mono); font-size: 0.75rem;
-      background: var(--card2); border: 1px solid var(--border);
-      color: var(--accent);
-      margin-top: 10px;
+    .traffic-light {
+      background: #05080f;
+      border: 2px solid #1e2d45;
+      border-radius: 16px;
+      padding: 16px 14px;
+      display: flex; flex-direction: column; gap: 10px;
+      align-items: center;
     }
+    .light-bulb {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: #0d1421;
+      border: 2px solid #1e2d45;
+      transition: background .3s, box-shadow .3s;
+    }
+    .light-bulb.on-red    { background: #f44; box-shadow: 0 0 18px rgba(255,68,68,.7); }
+    .light-bulb.on-yellow { background: #fa0; box-shadow: 0 0 18px rgba(255,170,0,.7); }
+    .light-bulb.on-green  { background: #4f4; box-shadow: 0 0 18px rgba(68,255,68,.7); }
+
+    .signal-pills { display: flex; flex-direction: column; gap: 10px; }
+    .signal-pill {
+      padding: 10px 18px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #0a1522;
+      font-size: 13px; font-weight: 600;
+      display: flex; align-items: center; gap: 8px;
+      transition: background .3s, border-color .3s;
+    }
+    .signal-pill .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+    .signal-pill.walk  { background: #0a2a0a; border-color: #1a4a1a; }
+    .signal-pill.walk .dot  { background: var(--safe); box-shadow: 0 0 8px var(--safe); }
+    .signal-pill.nowalk { background: #2a0a0a; border-color: #4a1a1a; }
+    .signal-pill.nowalk .dot { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+
+    /* ── Detections ──────────────────────────────────────────────── */
+    #detections-card { grid-column: 2; grid-row: 2; }
+    .detect-list { display: flex; flex-direction: column; gap: 8px; }
+    .detect-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px;
+      background: #0a1522;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      animation: fadein .3s ease;
+    }
+    @keyframes fadein { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+    .detect-icon { font-size: 20px; flex-shrink: 0; }
+    .detect-label { font-size: 14px; font-weight: 600; flex: 1; color: #cce; }
+    .detect-meta  { font-size: 12px; color: var(--muted); }
+    .detect-badge {
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-danger  { background:#2a0000; color:#ff5252; border: 1px solid #5a0000; }
+    .badge-caution { background:#2a1a00; color:#ffcc02; border: 1px solid #5a3a00; }
+    .badge-calm    { background:#002a10; color:#69f0ae; border: 1px solid #005a20; }
+    .detect-empty  { color: var(--muted); font-size: 13px; text-align: center; padding: 16px; }
+
+    /* ── Emotion ─────────────────────────────────────────────────── */
+    #emotion-card { grid-column: 1 / -1; grid-row: 3; }
+    .emotion-bars { display: flex; gap: 24px; flex-wrap: wrap; }
+    .emotion-bar { flex: 1; min-width: 140px; }
+    .emotion-name { font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    .bar-track { background: #0a1522; border-radius: 100px; height: 8px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 100px; transition: width .5s ease; }
+    .bar-stress { background: linear-gradient(90deg, #ff1744, #f50057); }
+    .bar-calm   { background: linear-gradient(90deg, #00e676, #00bfa5); }
+    .bar-fear   { background: linear-gradient(90deg, #ff6d00, #ff9100); }
+    .emotion-value { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* ── Log ─────────────────────────────────────────────────────── */
+    #log-card { grid-column: 1 / -1; }
+    .log-list { display: flex; flex-direction: column; gap: 4px; max-height: 160px; overflow-y: auto; }
+    .log-entry {
+      font-size: 12px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      color: #4a7aaa;
+      padding: 4px 0;
+      border-bottom: 1px solid #0f1d2e;
+    }
+    .log-entry .ts { color: var(--muted); margin-right: 8px; }
+    .log-entry.danger  { color: #ff5252; }
+    .log-entry.caution { color: #ffd740; }
+    .log-entry.calm    { color: #69f0ae; }
   </style>
 </head>
 <body>
 
 <header>
-  <div class="header-left">
-    <div class="logo">🚗</div>
-    <div>
-      <h1>Safety Agent <span>Dashboard</span></h1>
-      <div style="font-size:0.75rem;color:var(--muted);margin-top:2px;">
-        Blind Driver Assistance System — ESP32-S3-BOX-3
-      </div>
-    </div>
+  <div class="logo">🦯</div>
+  <div>
+    <h1>Pedestrian Navigation Agent</h1>
+    <p>ESP32-S3-BOX-3 · YOLOv8 Vision · ElevenLabs Voice · Hume Emotion</p>
   </div>
-  <div class="conn-badge" id="conn-badge">
-    <div class="conn-dot"></div>
-    <span id="conn-text">Connecting…</span>
-  </div>
+  <div class="ws-badge disconnected" id="ws-badge">⚡ Disconnected</div>
 </header>
 
 <div class="grid">
 
-  <!-- Hazard Level -->
-  <div class="card hazard-card" id="hazard-card">
-    <div class="hazard-ring safe" id="hazard-ring">SAFE</div>
-    <div class="hazard-info">
-      <div class="hazard-title safe" id="hazard-title" style="color:var(--safe-color);">All Clear</div>
-      <div class="hazard-subtitle" id="hazard-sub">No hazards detected. Drive safely.</div>
-      <div class="hazard-reasons" id="hazard-reasons"></div>
-      <div id="haptic-chip">📳 haptic: <span id="haptic-val">calm</span></div>
+  <!-- Crossing Status -->
+  <div class="card" id="crossing-card">
+    <div class="card-title">Crossing Status</div>
+    <div class="crossing-ring" id="crossing-ring">
+      <div class="crossing-icon" id="crossing-icon">🔄</div>
+      <div class="crossing-label" id="crossing-label">Connecting…</div>
+    </div>
+    <div class="speech-bubble" id="speech-bubble">Waiting for agent…</div>
+  </div>
+
+  <!-- Distance Sensor -->
+  <div class="card" id="distance-card">
+    <div class="card-title">Distance Sensor (HC-SR04)</div>
+    <div class="distance-display">
+      <div class="distance-value" id="dist-value">—</div>
+      <div class="distance-unit">cm</div>
+    </div>
+    <div class="distance-bar-wrap">
+      <div class="distance-bar" id="dist-bar" style="width:0%"></div>
     </div>
   </div>
 
-  <!-- PIR Sensor -->
-  <div class="card pir-card">
-    <div class="card-label">👁 PIR Motion Sensor</div>
-    <div class="pir-indicator" id="pir-indicator">📡</div>
-    <div id="pir-label">No motion</div>
+  <!-- Traffic Light + Walk Signal -->
+  <div class="card" id="light-card">
+    <div class="card-title">Traffic Light &amp; Walk Signal</div>
+    <div class="lights-row">
+      <div class="traffic-light">
+        <div class="light-bulb" id="bulb-red"></div>
+        <div class="light-bulb" id="bulb-yellow"></div>
+        <div class="light-bulb" id="bulb-green"></div>
+      </div>
+      <div class="signal-pills">
+        <div class="signal-pill" id="pill-walk">
+          <div class="dot"></div> Walk signal
+        </div>
+        <div class="signal-pill" id="pill-nowalk">
+          <div class="dot"></div> Don't walk
+        </div>
+        <div class="signal-pill" id="pill-cross" style="margin-top:4px">
+          <div class="dot"></div> <span id="cross-text">Safe to cross: —</span>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- Speech Alert -->
-  <div class="card speech-card" style="grid-column:span 2;">
-    <div class="card-label"><span class="speech-icon">🔊</span> Last Voice Alert</div>
-    <div id="speech-text"><em style="color:var(--muted);">No alert yet…</em></div>
+  <!-- Detections -->
+  <div class="card" id="detections-card">
+    <div class="card-title">Object Detections (YOLOv8)</div>
+    <div class="detect-list" id="detect-list">
+      <div class="detect-empty">No objects detected</div>
+    </div>
   </div>
 
-  <!-- Driver Emotion -->
-  <div class="card emotion-card">
-    <div class="card-label">🎭 Driver Emotion (Hume AI)</div>
+  <!-- Emotion -->
+  <div class="card" id="emotion-card">
+    <div class="card-title">Pedestrian Emotion (Hume EVI)</div>
     <div class="emotion-bars">
-      <div class="emotion-row">
-        <div class="emotion-label">Stress</div>
-        <div class="bar-bg"><div class="bar-fill stress" id="bar-stress" style="width:0%"></div></div>
-        <div class="emotion-val" id="val-stress">0.00</div>
+      <div class="emotion-bar">
+        <div class="emotion-name">Stress</div>
+        <div class="bar-track"><div class="bar-fill bar-stress" id="bar-stress" style="width:0%"></div></div>
+        <div class="emotion-value" id="val-stress">0.00</div>
       </div>
-      <div class="emotion-row">
-        <div class="emotion-label">Calm</div>
-        <div class="bar-bg"><div class="bar-fill calm" id="bar-calm" style="width:100%"></div></div>
-        <div class="emotion-val" id="val-calm">1.00</div>
+      <div class="emotion-bar">
+        <div class="emotion-name">Calm</div>
+        <div class="bar-track"><div class="bar-fill bar-calm" id="bar-calm" style="width:100%"></div></div>
+        <div class="emotion-value" id="val-calm">1.00</div>
       </div>
-      <div class="emotion-row">
-        <div class="emotion-label">Fear</div>
-        <div class="bar-bg"><div class="bar-fill fear" id="bar-fear" style="width:0%"></div></div>
-        <div class="emotion-val" id="val-fear">0.00</div>
+      <div class="emotion-bar">
+        <div class="emotion-name">Fear</div>
+        <div class="bar-track"><div class="bar-fill bar-fear" id="bar-fear" style="width:0%"></div></div>
+        <div class="emotion-value" id="val-fear">0.00</div>
       </div>
-    </div>
-    <div style="font-size:0.73rem; color:var(--muted); margin-top:12px;">
-      Dominant: <span id="emotion-summary" style="color:var(--text);">calm (1.00)</span>
     </div>
   </div>
 
-  <!-- Traffic Alerts -->
-  <div class="card traffic-card">
-    <div class="card-label">🚧 Traffic Incidents</div>
-    <div id="traffic-list">
-      <div class="no-alerts">Fetching traffic data…</div>
-    </div>
-  </div>
-
-  <!-- Event Log -->
-  <div class="card log-card">
-    <div class="card-label">📋 Event Log</div>
-    <div id="event-log"></div>
+  <!-- Log -->
+  <div class="card" id="log-card">
+    <div class="card-title">Event Log</div>
+    <div class="log-list" id="log-list"></div>
   </div>
 
 </div>
@@ -376,157 +363,141 @@
 <script>
   const WS_URL = 'ws://localhost:8765';
   let ws = null;
-  let reconnectTimer = null;
 
-  // ── WebSocket ─────────────────────────────────────────────────────────────
+  const ICONS = { safe: '🚶', caution: '⚠️', danger: '🛑', connecting: '🔄' };
+  const LABELS = {
+    safe: 'SAFE TO CROSS',
+    caution: 'CAUTION',
+    danger: 'DO NOT CROSS',
+    connecting: 'Connecting…',
+  };
+  const DET_ICONS = {
+    car:'🚗', truck:'🚛', bus:'🚌', motorcycle:'🏍️',
+    bicycle:'🚲', person:'🚶', 'traffic light':'🚦',
+    'stop sign':'🛑',
+  };
+
   function connect() {
     ws = new WebSocket(WS_URL);
 
     ws.onopen = () => {
-      setConnection(true);
-      addLog('Connected to Safety Agent', 'safe');
-    };
-
-    ws.onmessage = (evt) => {
-      try {
-        const state = JSON.parse(evt.data);
-        updateUI(state);
-      } catch(e) {
-        console.error('Parse error:', e);
-      }
+      setBadge(true);
+      log('Agent connected', 'calm');
     };
 
     ws.onclose = () => {
-      setConnection(false);
-      addLog('Connection lost — retrying in 3s…', 'danger');
-      reconnectTimer = setTimeout(connect, 3000);
+      setBadge(false);
+      setTimeout(connect, 3000);
     };
 
     ws.onerror = () => ws.close();
-  }
 
-  function setConnection(connected) {
-    const badge = document.getElementById('conn-badge');
-    const text  = document.getElementById('conn-text');
-    badge.className = 'conn-badge' + (connected ? ' connected' : '');
-    text.textContent = connected ? 'Live' : 'Disconnected';
-  }
-
-  // ── UI Update ─────────────────────────────────────────────────────────────
-  function updateUI(state) {
-    updateHazard(state);
-    updateEmotion(state.emotion || {});
-    updateTraffic(state.traffic_alerts || []);
-    updatePIR(state.pir || false);
-    updateSpeech(state.speech);
-    updateHaptic(state.haptic || 'calm');
-    addLog(buildLogMessage(state), state.level?.toLowerCase() || 'safe');
-  }
-
-  function updateHazard(state) {
-    const level = (state.level || 'SAFE').toLowerCase();
-    const ring  = document.getElementById('hazard-ring');
-    const title = document.getElementById('hazard-title');
-    const sub   = document.getElementById('hazard-sub');
-    const reasons = document.getElementById('hazard-reasons');
-
-    ring.className = 'hazard-ring ' + level;
-    ring.textContent = state.level || 'SAFE';
-
-    const colors = { safe: 'var(--safe-color)', caution: 'var(--caution-color)', danger: 'var(--danger-color)' };
-    const titleMap = { safe: 'All Clear', caution: 'Caution', danger: '⚠ Danger' };
-    const subMap = {
-      safe: 'No hazards detected. Drive safely.',
-      caution: 'Advisory: stay alert and proceed carefully.',
-      danger: 'STOP or slow down immediately — hazard ahead!',
+    ws.onmessage = ({ data }) => {
+      try { update(JSON.parse(data)); } catch(e) {}
     };
-
-    title.style.color = colors[level] || colors.safe;
-    title.textContent = titleMap[level] || 'Unknown';
-    sub.textContent   = subMap[level] || '';
-
-    reasons.innerHTML = '';
-    (state.reasons || []).forEach(r => {
-      const tag = document.createElement('div');
-      tag.className = 'reason-tag';
-      tag.textContent = r;
-      reasons.appendChild(tag);
-    });
   }
 
-  function updateEmotion(e) {
-    const set = (id, barId, val) => {
-      document.getElementById(id).textContent = val.toFixed(2);
-      document.getElementById(barId).style.width = (val * 100).toFixed(1) + '%';
-    };
-    set('val-stress', 'bar-stress', e.stress || 0);
-    set('val-calm',   'bar-calm',   e.calm   || 1);
-    set('val-fear',   'bar-fear',   e.fear   || 0);
-    document.getElementById('emotion-summary').textContent = e.summary || 'calm (1.00)';
-  }
+  function update(d) {
+    const level = (d.level || 'calm').toLowerCase();
 
-  function updateTraffic(alerts) {
-    const list = document.getElementById('traffic-list');
-    if (!alerts || alerts.length === 0) {
-      list.innerHTML = '<div class="no-alerts">Roads clear — no incidents reported.</div>';
-      return;
+    // ── Crossing ring ─────────────────────────────────────────────
+    const ring = document.getElementById('crossing-ring');
+    ring.className = 'crossing-ring ' + level;
+    document.getElementById('crossing-icon').textContent  = ICONS[level]  || '🔄';
+    document.getElementById('crossing-label').textContent = LABELS[level] || level;
+    document.getElementById('speech-bubble').textContent  = d.speech || '…';
+
+    // ── Distance ──────────────────────────────────────────────────
+    const cm = d.distance_cm;
+    const distEl = document.getElementById('dist-value');
+    const barEl  = document.getElementById('dist-bar');
+    if (cm !== null && cm !== undefined) {
+      distEl.textContent = Math.round(cm);
+      // bar: 0cm=100%, 400cm=0%
+      const pct = Math.max(0, Math.min(100, 100 - (cm / 4)));
+      barEl.style.width = pct + '%';
+      barEl.style.background = cm <= 60 ? '#ff1744' : cm <= 150 ? '#ffb300' : '#00e676';
+    } else {
+      distEl.textContent = '—';
+      barEl.style.width = '0%';
     }
-    list.innerHTML = '';
-    alerts.forEach(a => {
-      const item = document.createElement('div');
-      item.className = 'traffic-item';
-      item.innerHTML = `
-        <div class="sev-dot sev-${a.severity}"></div>
-        <div>
-          <div class="traffic-desc">${a.description}</div>
-          <div class="traffic-loc">📍 ${a.location}</div>
-        </div>`;
-      list.appendChild(item);
-    });
-  }
 
-  function updatePIR(active) {
-    const ind = document.getElementById('pir-indicator');
-    const lbl = document.getElementById('pir-label');
-    ind.className = 'pir-indicator' + (active ? ' active' : '');
-    ind.textContent = active ? '🔴' : '📡';
-    lbl.textContent = active ? '⚡ Motion detected!' : 'No motion';
-    lbl.style.color = active ? 'var(--danger-color)' : 'var(--muted)';
-  }
+    // ── Traffic light ─────────────────────────────────────────────
+    const color = d.traffic_light;
+    document.getElementById('bulb-red').className    = 'light-bulb' + (color === 'red'    ? ' on-red'    : '');
+    document.getElementById('bulb-yellow').className = 'light-bulb' + (color === 'yellow' ? ' on-yellow' : '');
+    document.getElementById('bulb-green').className  = 'light-bulb' + (color === 'green'  ? ' on-green'  : '');
 
-  function updateSpeech(speech) {
-    const el = document.getElementById('speech-text');
-    if (speech) {
-      el.innerHTML = `"${speech}"`;
-      el.style.color = 'var(--text)';
+    // ── Walk signal ───────────────────────────────────────────────
+    const walk = d.walk_signal;
+    const pillW = document.getElementById('pill-walk');
+    const pillN = document.getElementById('pill-nowalk');
+    pillW.className = 'signal-pill' + (walk === true  ? ' walk'   : '');
+    pillN.className = 'signal-pill' + (walk === false ? ' nowalk' : '');
+
+    const crossPill = document.getElementById('pill-cross');
+    const crossText = document.getElementById('cross-text');
+    if (d.safe_to_cross) {
+      crossPill.className = 'signal-pill walk';
+      crossText.textContent = 'Safe to cross ✓';
+    } else {
+      crossPill.className = 'signal-pill nowalk';
+      crossText.textContent = 'Not safe to cross';
     }
+
+    // ── Detections ────────────────────────────────────────────────
+    const list = document.getElementById('detect-list');
+    const dets = d.detections || [];
+    if (dets.length === 0) {
+      list.innerHTML = '<div class="detect-empty">No objects detected</div>';
+    } else {
+      list.innerHTML = dets.map(det => {
+        const icon = DET_ICONS[det.label] || '📦';
+        const badge = `badge-${det.urgency}`;
+        const conf = Math.round(det.confidence * 100);
+        return `
+          <div class="detect-row">
+            <span class="detect-icon">${icon}</span>
+            <span class="detect-label">${det.label.charAt(0).toUpperCase() + det.label.slice(1)}</span>
+            <span class="detect-meta">${det.position} · ${det.distance_zone} · ${conf}%</span>
+            <span class="detect-badge ${badge}">${det.urgency}</span>
+          </div>`;
+      }).join('');
+    }
+
+    // ── Emotion ───────────────────────────────────────────────────
+    const emo = d.emotion || {};
+    setBar('stress', emo.stress || 0);
+    setBar('calm',   emo.calm   || 0);
+    setBar('fear',   emo.fear   || 0);
+
+    // ── Log ───────────────────────────────────────────────────────
+    const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+    log(`[${level.toUpperCase()}] ${d.speech || 'status update'}`, level);
   }
 
-  function updateHaptic(pattern) {
-    document.getElementById('haptic-val').textContent = pattern;
+  function setBar(name, val) {
+    document.getElementById('bar-' + name).style.width = (val * 100).toFixed(1) + '%';
+    document.getElementById('val-' + name).textContent  = val.toFixed(2);
   }
 
-  // ── Event Log ─────────────────────────────────────────────────────────────
-  function addLog(msg, level) {
-    const log = document.getElementById('event-log');
-    const entry = document.createElement('div');
-    entry.className = 'log-entry';
-    const ts = new Date().toLocaleTimeString();
-    entry.innerHTML = `<span class="ts">${ts}</span><span class="msg-${level}">${msg}</span>`;
-    log.prepend(entry);
-    // Keep max 60 entries
-    while (log.children.length > 60) log.removeChild(log.lastChild);
+  function setBadge(connected) {
+    const b = document.getElementById('ws-badge');
+    b.textContent = connected ? '⚡ Live' : '⚡ Disconnected';
+    b.className   = 'ws-badge' + (connected ? '' : ' disconnected');
   }
 
-  function buildLogMessage(state) {
-    if (state.speech) return `[${state.level}] ${state.speech}`;
-    if ((state.reasons || []).length > 0) return `[${state.level}] ${state.reasons[0]}`;
-    return `[${state.level}] Status update`;
+  function log(msg, level) {
+    const logList = document.getElementById('log-list');
+    const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+    const el = document.createElement('div');
+    el.className = 'log-entry ' + (level || '');
+    el.innerHTML = `<span class="ts">${ts}</span>${msg}`;
+    logList.prepend(el);
+    if (logList.children.length > 80) logList.lastChild.remove();
   }
 
-  // ── Start ─────────────────────────────────────────────────────────────────
   connect();
-  addLog('Dashboard loaded — connecting to agent…', 'safe');
 </script>
 </body>
 </html>

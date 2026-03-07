@@ -1,12 +1,11 @@
 """
-main.py — Entry point for the Blind Driver Safety Agent.
+main.py — Entry point for the Blind Pedestrian Navigation Agent.
 
 Usage:
-  python main.py                              # Uses .env config, real hardware
-  python main.py --mock                       # Simulated mode (no hardware)
-  python main.py --port /dev/cu.usbserial-X  # Custom serial port
-  python main.py --location "Austin, TX"     # Custom traffic location
-  python main.py --mock --location "NYC"     # Full simulation
+  python main.py                                    # real hardware + real camera
+  python main.py --mock                             # full simulation
+  python main.py --camera http://192.168.1.5:8080/video
+  python main.py --port /dev/cu.usbserial-XXXX --mock
 """
 
 import argparse
@@ -15,7 +14,6 @@ import logging
 import os
 import sys
 
-# ── Configure logging ─────────────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)-8s  %(message)s",
@@ -29,55 +27,39 @@ logger = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="🚗 Blind Driver Safety Agent — ElevenLabs + Hume + ESP32",
+    p = argparse.ArgumentParser(
+        description="👁  Blind Pedestrian Navigation Agent",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+Phone camera setup:
+  Android: Install 'IP Webcam' app → Start server → use http://PHONE_IP:8080/video
+  iOS:     Install 'EpocCam' or use USB then pass --camera 1
+
 Examples:
   python main.py --mock
-  python main.py --port /dev/cu.usbserial-0001 --location "San Francisco, CA"
+  python main.py --camera http://192.168.1.42:8080/video --port /dev/cu.usbserial-0001
         """,
     )
-    parser.add_argument(
-        "--mock",
-        action="store_true",
-        help="Run in simulation mode (no hardware, mocked APIs)",
-    )
-    parser.add_argument(
-        "--port",
-        type=str,
-        default=None,
-        help="Serial port for ESP32 (overrides .env SERIAL_PORT)",
-    )
-    parser.add_argument(
-        "--location",
-        type=str,
-        default=None,
-        help="Traffic location to monitor (overrides .env SCRAPE_LOCATION)",
-    )
-    parser.add_argument(
-        "--log-level",
-        type=str,
-        default="INFO",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-        help="Logging verbosity",
-    )
-    return parser.parse_args()
+    p.add_argument("--mock",     action="store_true",
+                   help="Simulation mode (no hardware, no real camera)")
+    p.add_argument("--port",     type=str, default=None,
+                   help="ESP32 serial port (overrides .env SERIAL_PORT)")
+    p.add_argument("--camera",   type=str, default=None,
+                   help="Phone camera URL (overrides .env CAMERA_STREAM_URL)")
+    p.add_argument("--log-level", type=str, default="INFO",
+                   choices=["DEBUG", "INFO", "WARNING", "ERROR"])
+    return p.parse_args()
 
 
 async def main():
     args = parse_args()
-
-    # Apply log level
     logging.getLogger().setLevel(getattr(logging, args.log_level))
 
-    # Override env vars from CLI args
     if args.port:
         os.environ["SERIAL_PORT"] = args.port
-    if args.location:
-        os.environ["SCRAPE_LOCATION"] = args.location
+    if args.camera:
+        os.environ["CAMERA_STREAM_URL"] = args.camera
 
-    # Load config
     try:
         from agent.config import load_config
         config = load_config()
@@ -85,26 +67,13 @@ async def main():
         print(f"\n❌  {e}\n")
         sys.exit(1)
 
-    # Print startup banner
-    mock_tag = "  [MOCK MODE — No hardware required]" if args.mock else ""
-    print()
-    print("╔══════════════════════════════════════════════════════╗")
-    print("║      🚗  Blind Driver Safety Agent  🚗               ║")
-    print("║          ElevenLabs + Hume AI + ESP32-S3-BOX-3       ║")
-    print("╚══════════════════════════════════════════════════════╝")
-    print(f"  Serial port : {config.serial_port}")
-    print(f"  Location    : {config.scrape_location}")
-    print(f"  Dashboard   : http://localhost:{config.ws_port} (open dashboard/index.html)")
-    print(f"  Mock mode   :{mock_tag if mock_tag else ' OFF'}")
-    print()
-
-    from agent.agent_core import SafetyAgent
-    agent = SafetyAgent(config=config, mock=args.mock)
+    from agent.pedestrian_agent import PedestrianAgent
+    agent = PedestrianAgent(config=config, mock=args.mock)
 
     try:
         await agent.run()
     except KeyboardInterrupt:
-        print("\n\n⏹  Agent stopped by user.")
+        print("\n⏹  Agent stopped.")
         await agent.stop()
 
 
