@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>DigiGuide · Technical Design Document</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #f4f6f9;
+            color: #1e2330;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        /* ── Doc wrapper ── */
+        .doc {
+            max-width: 960px;
+            margin: 32px auto 64px;
+            background: #fff;
+            border: 1px solid #dde2ea;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, .07);
+            overflow: hidden;
+        }
+
+        /* ── Doc header bar ── */
+        .doc-header {
+            background: #1e2330;
+            color: #fff;
+            padding: 22px 32px 18px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .doc-header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -.3px;
+        }
+
+        .doc-header .meta {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: rgba(255, 255, 255, .55);
+            text-align: right;
+            line-height: 1.8;
+        }
+
+        .badge {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            background: rgba(255, 255, 255, .12);
+            border: 1px solid rgba(255, 255, 255, .2);
+            border-radius: 4px;
+            padding: 2px 8px;
+            margin-bottom: 6px;
+        }
+
+        /* ── Body padding ── */
+        .doc-body {
+            padding: 28px 32px 36px;
+        }
+
+        /* ── Section ── */
+        .section {
+            margin-bottom: 28px;
+        }
+
+        .section-title {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #6b7a99;
+            border-bottom: 1px solid #eaecf2;
+            padding-bottom: 5px;
+            margin-bottom: 14px;
+        }
+
+        /* ── Overview ── */
+        .overview-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .overview-card {
+            background: #f8f9fc;
+            border: 1px solid #e4e8f0;
+            border-radius: 6px;
+            padding: 12px 14px;
+        }
+
+        .overview-card h4 {
+            font-size: 11px;
+            font-weight: 700;
+            color: #3b4d7a;
+            margin-bottom: 4px;
+        }
+
+        .overview-card p {
+            font-size: 11.5px;
+            color: #4a5568;
+        }
+
+        /* ── System flowchart ── */
+        .flowchart-wrap {
+            background: #f8f9fc;
+            border: 1px solid #e4e8f0;
+            border-radius: 6px;
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        /* SVG styles are inline below */
+
+        /* ── Component table ── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        thead tr {
+            background: #f0f3f9;
+        }
+
+        th {
+            text-align: left;
+            padding: 7px 10px;
+            font-weight: 600;
+            color: #3b4d7a;
+            border-bottom: 2px solid #dde2ea;
+        }
+
+        td {
+            padding: 7px 10px;
+            border-bottom: 1px solid #eaecf2;
+            vertical-align: top;
+            color: #2d3748;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: #f8f9fc;
+        }
+
+        .tag {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9.5px;
+            font-weight: 500;
+            border-radius: 3px;
+            padding: 1px 6px;
+        }
+
+        .tag-hw {
+            background: #fff3e0;
+            color: #bf360c;
+            border: 1px solid #ffccbc;
+        }
+
+        .tag-api {
+            background: #e3f2fd;
+            color: #01579b;
+            border: 1px solid #b3e5fc;
+        }
+
+        .tag-sw {
+            background: #f3e5f5;
+            color: #6a1b9a;
+            border: 1px solid #e1bee7;
+        }
+
+        .tag-out {
+            background: #e8f5e9;
+            color: #1b5e20;
+            border: 1px solid #c8e6c9;
+        }
+
+        /* ── User flow columns ── */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .flow-col {
+            border-radius: 6px;
+            border: 1.5px solid;
+            overflow: hidden;
+        }
+
+        .flow-col.blind {
+            border-color: #4caf50;
+        }
+
+        .flow-col.deaf {
+            border-color: #e91e63;
+        }
+
+        .flow-col-header {
+            padding: 8px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .3px;
+        }
+
+        .blind .flow-col-header {
+            background: #e8f5e9;
+            color: #1b5e20;
+        }
+
+        .deaf .flow-col-header {
+            background: #fce4ec;
+            color: #880e4f;
+        }
+
+        .flow-steps {
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        /* step box */
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 7px 9px;
+            border-radius: 5px;
+            border: 1px solid;
+            background: #fff;
+            position: relative;
+        }
+
+        .step-hw {
+            border-color: #ffb74d;
+            background: #fff8f0;
+        }
+
+        .step-api {
+            border-color: #64b5f6;
+            background: #f0f7ff;
+        }
+
+        .step-proc {
+            border-color: #ce93d8;
+            background: #fdf4ff;
+        }
+
+        .step-out {
+            border-color: #81c784;
+            background: #f1fff2;
+        }
+
+        .step-out-d {
+            border-color: #f48fb1;
+            background: #fff0f5;
+        }
+
+        .step-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            font-weight: 600;
+            min-width: 16px;
+            color: #8899bb;
+            padding-top: 1px;
+        }
+
+        .step-title {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #1e2330;
+            line-height: 1.3;
+        }
+
+        .step-desc {
+            font-size: 10.5px;
+            color: #6b7a99;
+            margin-top: 1px;
+        }
+
+        /* connector arrow between steps */
+        .connector {
+            display: flex;
+            align-items: center;
+            padding: 0 0 0 20px;
+            height: 18px;
+        }
+
+        .connector svg {
+            display: block;
+        }
+
+        /* ── Data flow note ── */
+        .note {
+            background: #fffbea;
+            border: 1px solid #ffe082;
+            border-radius: 5px;
+            padding: 9px 12px;
+            font-size: 11.5px;
+            color: #5d4037;
+        }
+
+        .note strong {
+            color: #3e2723;
+        }
+
+        /* ── Footer ── */
+        .doc-footer {
+            background: #f4f6f9;
+            border-top: 1px solid #dde2ea;
+            padding: 10px 32px;
+            font-size: 10.5px;
+            color: #8899bb;
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="doc">
+
+        <!-- ── Header ── -->
+        <div class="doc-header">
+            <div>
+                <div class="badge">SodaHacks 2026 · Technical Design Document</div>
+                <h1>DigiGuide</h1>
+                <div style="color:rgba(255,255,255,.6);font-size:12px;margin-top:4px;">
+                    Accessibility Road-Crossing Assistant for Blind &amp; Deaf Pedestrians
+                </div>
+            </div>
+            <div class="meta">
+                Version: 1.0<br>
+                Date: 2026-03-07<br>
+                Status: DRAFT
+            </div>
+        </div>
+
+        <div class="doc-body">
+
+            <!-- ── 1. Overview ── -->
+            <div class="section">
+                <div class="section-title">1 · Overview</div>
+                <div class="overview-grid">
+                    <div class="overview-card">
+                        <h4>Purpose</h4>
+                        <p>DigiGuide uses embedded computer vision and cloud AI to give real-time street-crossing
+                            guidance to users who are blind (via audio) or deaf (via haptic + screen alerts).</p>
+                    </div>
+                    <div class="overview-card">
+                        <h4>Scope</h4>
+                        <p>ESP32 S3 Box 3 firmware, a Python orchestration backend, Gemini Vision API integration,
+                            ElevenLabs TTS, piezoelectric haptic output, and a Three.js companion UI.</p>
+                    </div>
+                    <div class="overview-card">
+                        <h4>User Modes</h4>
+                        <p><strong>Blind:</strong> Audio narration of scene context via ElevenLabs TTS.<br>
+                            <strong>Deaf:</strong> Haptic buzzes + on-device screen warnings.
+                        </p>
+                    </div>
+                    <div class="overview-card">
+                        <h4>Key Constraint</h4>
+                        <p>Latency target &lt;2 s from camera capture to output alert. Hazard priority ordered by: <code
+                                style="font-family:monospace;font-size:11px">person &gt; vehicle &gt; cyclist &gt; other</code>.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── 2. System Architecture ── -->
+            <div class="section">
+                <div class="section-title">2 · System Architecture Flowchart</div>
+                <div class="flowchart-wrap">
+                    <svg viewBox="0 0 860 360" xmlns="http://www.w3.org/2000/svg"
+                        style="width:100%;min-width:700px;height:auto;font-family:'Inter',sans-serif;">
+
+                        <!-- ─── Swimlane backgrounds ─── -->
+                        <!-- Hardware lane: taller to avoid label/node clash -->
+                        <rect x="0" y="20" width="860" height="110" fill="#fff8f0" rx="4" />
+                        <text x="8" y="34" font-size="8" font-weight="600" fill="#bf360c" letter-spacing="1"
+                            font-family="'JetBrains Mono',monospace">HARDWARE</text>
+
+                        <!-- Processing lane -->
+                        <rect x="0" y="134" width="860" height="86" fill="#fdf4ff" rx="4" />
+                        <text x="8" y="147" font-size="8" font-weight="600" fill="#6a1b9a" letter-spacing="1"
+                            font-family="'JetBrains Mono',monospace">PROCESSING</text>
+
+                        <!-- Output lane -->
+                        <rect x="0" y="224" width="860" height="130" fill="#f0f7ff" rx="4" />
+                        <text x="8" y="237" font-size="8" font-weight="600" fill="#01579b" letter-spacing="1"
+                            font-family="'JetBrains Mono',monospace">OUTPUT</text>
+
+                        <!-- Lane dividers -->
+                        <line x1="0" y1="134" x2="860" y2="134" stroke="#e4e8f0" stroke-width="1" />
+                        <line x1="0" y1="224" x2="860" y2="224" stroke="#e4e8f0" stroke-width="1" />
+
+                        <!-- ═══ HARDWARE LANE nodes ═══ -->
+
+                        <!-- Real World -->
+                        <rect x="14" y="42" width="94" height="58" rx="6" fill="#fff" stroke="#ffb74d"
+                            stroke-width="1.5" />
+                        <text x="61" y="64" text-anchor="middle" font-size="10" font-weight="600" fill="#e65100">🌍 Real
+                            World</text>
+                        <text x="61" y="79" text-anchor="middle" font-size="8.5" fill="#888">street scene</text>
+                        <text x="61" y="91" text-anchor="middle" font-size="8" fill="#bbb">environment</text>
+
+                        <!-- arrow -->
+                        <line x1="108" y1="71" x2="135" y2="71" stroke="#ffb74d" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="135,67 143,71 135,75" fill="#ffb74d" />
+                        <text x="121" y="67" text-anchor="middle" font-size="7.5" fill="#999">live feed</text>
+
+                        <!-- ESP32-CAM -->
+                        <rect x="143" y="42" width="100" height="58" rx="6" fill="#fff" stroke="#ffb74d"
+                            stroke-width="1.5" />
+                        <text x="193" y="64" text-anchor="middle" font-size="10" font-weight="600" fill="#e65100">📷
+                            ESP32-CAM</text>
+                        <text x="193" y="79" text-anchor="middle" font-size="8.5" fill="#888">JPEG stream</text>
+                        <text x="193" y="91" text-anchor="middle" font-size="8" fill="#bbb">~5 fps / 320×240</text>
+
+                        <!-- arrow -->
+                        <line x1="243" y1="71" x2="270" y2="71" stroke="#ffb74d" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="270,67 278,71 270,75" fill="#ffb74d" />
+                        <text x="256" y="67" text-anchor="middle" font-size="7.5" fill="#999">WiFi/Serial</text>
+
+                        <!-- ESP32 S3 Box 3 -->
+                        <rect x="278" y="42" width="110" height="58" rx="6" fill="#fff" stroke="#ffb74d"
+                            stroke-width="1.5" />
+                        <text x="333" y="61" text-anchor="middle" font-size="10" font-weight="600" fill="#e65100">🖥
+                            ESP32</text>
+                        <text x="333" y="75" text-anchor="middle" font-size="10" font-weight="600" fill="#e65100">S3 Box
+                            3</text>
+                        <text x="333" y="90" text-anchor="middle" font-size="8.5" fill="#888">main controller</text>
+
+                        <!-- arrow -->
+                        <line x1="388" y1="71" x2="415" y2="71" stroke="#ffb74d" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="415,67 423,71 415,75" fill="#ffb74d" />
+
+                        <!-- PIR Sensor -->
+                        <rect x="423" y="42" width="100" height="58" rx="6" fill="#fff" stroke="#ffb74d"
+                            stroke-width="1.5" />
+                        <text x="473" y="64" text-anchor="middle" font-size="10" font-weight="600" fill="#e65100">📡 PIR
+                            Sensor</text>
+                        <text x="473" y="79" text-anchor="middle" font-size="8.5" fill="#888">proximity (ft)</text>
+                        <text x="473" y="91" text-anchor="middle" font-size="8" fill="#bbb">GPIO read</text>
+
+                        <!-- arrow -->
+                        <line x1="523" y1="71" x2="550" y2="71" stroke="#ffb74d" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="550,67 558,71 550,75" fill="#ffb74d" />
+
+                        <!-- Piezo -->
+                        <rect x="558" y="42" width="112" height="58" rx="6" fill="#fff" stroke="#ffb74d"
+                            stroke-width="1.5" />
+                        <text x="614" y="61" text-anchor="middle" font-size="10" font-weight="600" fill="#e65100">〰
+                            Piezoelectric</text>
+                        <text x="614" y="75" text-anchor="middle" font-size="10" font-weight="600"
+                            fill="#e65100">Disk</text>
+                        <text x="614" y="90" text-anchor="middle" font-size="8.5" fill="#888">haptic output</text>
+
+                        <!-- ═══ PROCESSING LANE ═══ -->
+
+                        <!-- Down arrow from S3Box to Python -->
+                        <line x1="333" y1="100" x2="333" y2="144" stroke="#9c27b0" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="329,144 337,144 333,152" fill="#9c27b0" />
+                        <text x="344" y="128" font-size="7.5" fill="#9c27b0">frames + distance</text>
+
+                        <!-- Python Backend -->
+                        <rect x="248" y="135" width="170" height="50" rx="6" fill="#fff" stroke="#ce93d8"
+                            stroke-width="1.5" />
+                        <text x="333" y="152" text-anchor="middle" font-size="10" font-weight="600" fill="#7b1fa2">🐍
+                            Python Backend</text>
+                        <text x="333" y="166" text-anchor="middle" font-size="8.5" fill="#888">orchestration · data
+                            fusion</text>
+                        <text x="333" y="177" text-anchor="middle" font-size="8.5" fill="#888">precedence array
+                            builder</text>
+
+                        <!-- arrow: Python → Gemini -->
+                        <line x1="418" y1="160" x2="480" y2="160" stroke="#9c27b0" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="480,156 488,160 480,164" fill="#9c27b0" />
+                        <text x="449" y="154" text-anchor="middle" font-size="7.5" fill="#9c27b0">JPEG + prompt</text>
+
+                        <!-- Gemini API -->
+                        <rect x="488" y="128" width="120" height="64" rx="6" fill="#fff" stroke="#64b5f6"
+                            stroke-width="1.5" />
+                        <text x="548" y="148" text-anchor="middle" font-size="10" font-weight="600" fill="#0288d1">🔮
+                            Gemini</text>
+                        <text x="548" y="162" text-anchor="middle" font-size="10" font-weight="600"
+                            fill="#0288d1">Vision API</text>
+                        <text x="548" y="177" text-anchor="middle" font-size="8.5" fill="#888">object detect +
+                            context</text>
+
+                        <!-- Gemini → Python return -->
+                        <line x1="488" y1="150" x2="430" y2="150" stroke="#0288d1" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="430,146 422,150 430,154" fill="#0288d1" />
+                        <text x="459" y="145" text-anchor="middle" font-size="7.5" fill="#0288d1">JSON objects</text>
+
+                        <!-- ═══ OUTPUT LANE ═══ -->
+
+                        <!-- Python → ElevenLabs (left) -->
+                        <line x1="300" y1="185" x2="180" y2="214" stroke="#4caf50" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="175,211 183,218 186,209" fill="#4caf50" />
+                        <text x="225" y="207" text-anchor="middle" font-size="7.5" fill="#4caf50">text prompt</text>
+
+                        <!-- ElevenLabs TTS -->
+                        <rect x="60" y="214" width="120" height="50" rx="6" fill="#fff" stroke="#64b5f6"
+                            stroke-width="1.5" />
+                        <text x="120" y="232" text-anchor="middle" font-size="10" font-weight="600" fill="#0288d1">🎙
+                            ElevenLabs</text>
+                        <text x="120" y="246" text-anchor="middle" font-size="9" font-weight="600" fill="#0288d1">TTS
+                            API</text>
+                        <text x="120" y="258" text-anchor="middle" font-size="8.5" fill="#888">voice synthesis</text>
+
+                        <!-- ElevenLabs → Audio output -->
+                        <line x1="120" y1="264" x2="120" y2="288" stroke="#4caf50" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="116,288 124,288 120,296" fill="#4caf50" />
+
+                        <!-- Audio Output -->
+                        <rect x="60" y="296" width="120" height="16" rx="4" fill="#e8f5e9" stroke="#4caf50"
+                            stroke-width="1.5" />
+                        <text x="120" y="308" text-anchor="middle" font-size="9" font-weight="600" fill="#2e7d32">🔊
+                            Audio Alert (Blind)</text>
+
+                        <!-- Python → Haptic/Screen (right) -->
+                        <line x1="366" y1="185" x2="490" y2="214" stroke="#e91e63" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="486,211 494,218 497,209" fill="#e91e63" />
+                        <text x="455" y="207" text-anchor="middle" font-size="7.5" fill="#e91e63">alert signal</text>
+
+                        <!-- Haptic box -->
+                        <rect x="498" y="214" width="110" height="50" rx="6" fill="#fff" stroke="#f48fb1"
+                            stroke-width="1.5" />
+                        <text x="553" y="230" text-anchor="middle" font-size="10" font-weight="600" fill="#c2185b">〰
+                            Piezo Haptic</text>
+                        <text x="553" y="244" text-anchor="middle" font-size="9" fill="#c2185b">Buzz intensity</text>
+                        <text x="553" y="257" text-anchor="middle" font-size="8.5" fill="#888">∝ proximity to
+                            hazard</text>
+
+                        <!-- Screen box -->
+                        <rect x="620" y="214" width="110" height="50" rx="6" fill="#fff" stroke="#f48fb1"
+                            stroke-width="1.5" />
+                        <text x="675" y="230" text-anchor="middle" font-size="10" font-weight="600" fill="#c2185b">🖥
+                            Screen Alert</text>
+                        <text x="675" y="244" text-anchor="middle" font-size="9" fill="#c2185b">S3 Box Display</text>
+                        <text x="675" y="257" text-anchor="middle" font-size="8.5" fill="#888">"CAR – 10 FT LEFT"</text>
+
+                        <!-- haptic + screen output labels -->
+                        <rect x="498" y="272" width="232" height="16" rx="4" fill="#fce4ec" stroke="#e91e63"
+                            stroke-width="1.5" />
+                        <text x="614" y="284" text-anchor="middle" font-size="9" font-weight="600" fill="#880e4f">📳
+                            Haptic + Screen Warning (Deaf)</text>
+
+                        <!-- Selenium box -->
+                        <rect x="740" y="135" width="105" height="50" rx="6" fill="#fff" stroke="#64b5f6"
+                            stroke-width="1.5" />
+                        <text x="792" y="153" text-anchor="middle" font-size="10" font-weight="600" fill="#0288d1">🌐
+                            Selenium</text>
+                        <text x="792" y="167" text-anchor="middle" font-size="9" fill="#0288d1">Browser Agent</text>
+                        <text x="792" y="179" text-anchor="middle" font-size="8.5" fill="#888">web automation</text>
+
+                        <!-- Python → Selenium arrow -->
+                        <line x1="418" y1="155" x2="740" y2="155" stroke="#9c27b0" stroke-width="1"
+                            stroke-dasharray="3,4" />
+                        <polygon points="740,151 748,155 740,159" fill="#9c27b0" />
+
+                        <!-- Three.js box -->
+                        <rect x="740" y="214" width="105" height="50" rx="6" fill="#fff" stroke="#ce93d8"
+                            stroke-width="1.5" />
+                        <text x="792" y="230" text-anchor="middle" font-size="10" font-weight="600" fill="#7b1fa2">✨
+                            Three.js UI</text>
+                        <text x="792" y="244" text-anchor="middle" font-size="9" fill="#7b1fa2">Glowing Orb</text>
+                        <text x="792" y="257" text-anchor="middle" font-size="8.5" fill="#888">visual feedback</text>
+
+                        <!-- Selenium → Three.js -->
+                        <line x1="792" y1="185" x2="792" y2="214" stroke="#9c27b0" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="788,214 796,214 792,222" fill="#9c27b0" />
+
+                    </svg>
+                </div>
+            </div>
+
+            <!-- ── 3. Component Table ── -->
+            <div class="section">
+                <div class="section-title">3 · Component Descriptions</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:18%">Component</th>
+                            <th style="width:10%">Type</th>
+                            <th style="width:32%">Role</th>
+                            <th style="width:40%">Interface / Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>ESP32-CAM</strong></td>
+                            <td><span class="tag tag-hw">Hardware</span></td>
+                            <td>Captures continuous JPEG frames of the street scene at ~5 fps.</td>
+                            <td>Streams over Serial/WiFi to S3 Box 3; 320×240 JPEG sent per inference cycle.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>ESP32 S3 Box 3</strong></td>
+                            <td><span class="tag tag-hw">Hardware</span></td>
+                            <td>Central controller. Routes sensor data to Python backend and renders deaf alerts on its
+                                built-in display.</td>
+                            <td>WiFi client to Python server; ILI9342C LCD for screen output; GPIO for piezo PWM signal.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>PIR Distance Sensor</strong></td>
+                            <td><span class="tag tag-hw">Hardware</span></td>
+                            <td>Measures proximity of detected objects (e.g. 10 ft). Used to determine haptic buzz
+                                intensity.</td>
+                            <td>GPIO analog/digital read on S3 Box. Distance merged with Gemini object list.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Piezoelectric Disk</strong></td>
+                            <td><span class="tag tag-hw">Hardware</span></td>
+                            <td>Provides haptic vibration feedback for deaf users. Buzz frequency inversely proportional
+                                to hazard distance.</td>
+                            <td>Driven by PWM signal from S3 Box GPIO; intensity mapped [0–255] from distance value.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Python Backend</strong></td>
+                            <td><span class="tag tag-sw">Software</span></td>
+                            <td>Orchestrates the full pipeline: receives frames, calls Gemini, builds precedence array,
+                                routes to correct output path.</td>
+                            <td>Flask/asyncio server. Precedence array: <code
+                                    style="font:11px monospace">[{label, distance, priority}]</code> sorted by severity.
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Gemini Vision API</strong></td>
+                            <td><span class="tag tag-api">Cloud API</span></td>
+                            <td>Classifies objects in each JPEG frame (cars, people, cyclists, traffic lights, etc.) and
+                                returns spatial context as JSON.</td>
+                            <td>Called via <code style="font:11px monospace">gemini-2.0-flash</code>. Prompt instructs
+                                model to return JSON list of detected objects with spatial tags.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>ElevenLabs TTS</strong></td>
+                            <td><span class="tag tag-api">Cloud API</span></td>
+                            <td>Converts the highest-priority hazard description string into natural speech MP3 streamed
+                                to device speaker.</td>
+                            <td>REST API; voice ID configurable. Example output: <em>"Car approaching from your left,
+                                    approximately 10 feet."</em></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Selenium Agent</strong></td>
+                            <td><span class="tag tag-api">Cloud API</span></td>
+                            <td>Browser automation layer. Handles web-based signal lookups (e.g. live traffic API,
+                                crosswalk state polling).</td>
+                            <td>Headless Chrome; results fed back into precedence array for additional context
+                                enrichment.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Three.js UI</strong></td>
+                            <td><span class="tag tag-sw">Software</span></td>
+                            <td>Companion web interface. Glowing orb pulses in sync with ElevenLabs audio (blind) or
+                                flashes red with proximity (deaf).</td>
+                            <td>ShaderMaterial + Perlin noise for orb effect. Receives alerts via WebSocket from Python
+                                backend.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- ── 4. User Flow Pipelines ── -->
+            <div class="section">
+                <div class="section-title">4 · User Flow Pipelines</div>
+                <div class="two-col">
+
+                    <!-- Blind -->
+                    <div class="flow-col blind">
+                        <div class="flow-col-header">👁 Blind User — Audio Pipeline</div>
+                        <div class="flow-steps">
+
+                            <div class="step step-hw">
+                                <span class="step-num">01</span>
+                                <div class="step-content">
+                                    <div class="step-title">ESP32-CAM captures frame</div>
+                                    <div class="step-desc">JPEG at ~5 fps streamed to Python backend over WiFi.</div>
+                                </div>
+                            </div>
+                            <div class="connector"><svg width="12" height="14">
+                                    <line x1="6" y1="0" x2="6" y2="10" stroke="#bbb" stroke-width="1.5"
+                                        stroke-dasharray="3,2" />
+                                    <polygon points="3,10 9,10 6,14" fill="#bbb" />
+                                </svg></div>
+
+                            <div class="step step-api">
+                                <span class="step-num">02</span>
+                                <div class="step-content">
+                                    <div class="step-title">Gemini Vision API — Image Recognition</div>
+                                    <div class="step-desc">Returns JSON: detected objects, labels, and relative
+                                        positions.</div>
+                                </div>
+                            </div>
+                            <div class="connector"><svg width="12" height="14">
+                                    <line x1="6" y1="0" x2="6" y2="10" stroke="#bbb" stroke-width="1.5"
+                                        stroke-dasharray="3,2" />
+                                    <polygon points="3,10 9,10 6,14" fill="#bbb" />
+                                </svg></div>
+
+                            <div class="step step-proc">
+                                <span class="step-num">03</span>
+                                <div class="step-content">
+                                    <div class="step-title">Python — Precedence Array Build</div>
+                                    <div class="step-desc">Fuse PIR distance + object list → rank hazards → pick top
+                                        alert.</div>
+                                </div>
+                            </div>
+                            <div class="connector"><svg width="12" height="14">
+                                    <line x1="6" y1="0" x2="6" y2="10" stroke="#bbb" stroke-width="1.5"
+                                        stroke-dasharray="3,2" />
+                                    <polygon points="3,10 9,10 6,14" fill="#bbb" />
+                                </svg></div>
+
+                            <div class="step step-api">
+                                <span class="step-num">04</span>
+                                <div class="step-content">
+                                    <div class="step-title">ElevenLabs TTS — Speech Synthesis</div>
+                                    <div class="step-desc">Top hazard string → natural speech MP3 → speaker output.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="connector"><svg width="12" height="14">
+                                    <line x1="6" y1="0" x2="6" y2="10" stroke="#bbb" stroke-width="1.5"
+                                        stroke-dasharray="3,2" />
+                                    <polygon points="3,10 9,10 6,14" fill="#bbb" />
+                                </svg></div>
+
+                            <div class="step step-out">
+                                <span class="step-num">05</span>
+                                <div class="step-content">
+                                    <div class="step-title">🔊 Audio Output + Three.js Orb Pulse</div>
+                                    <div class="step-desc">"Car approaching left, 10 feet." — orb glow syncs with
+                                        playback.</div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- Deaf -->
+                    <div class="flow-col deaf">
+                        <div class="flow-col-header">🤟 Deaf User — Haptic + Screen Pipeline</div>
+                        <div class="flow-steps">
+
+                            <div class="step step-hw">
+                                <span class="step-num">01</span>
+                                <div class="step-content">
+                                    <div class="step-title">ESP32-CAM + PIR Sensor — Dual Capture</div>
+                                    <div class="step-desc">JPEG frame + distance reading fused and sent to backend
+                                        together.</div>
+                                </div>
+                            </div>
+                            <div class="connector"><svg width="12" height="14">
+                                    <line x1="6" y1="0" x2="6" y2="10" stroke="#bbb" stroke-width="1.5"
+                                        stroke-dasharray="3,2" />
+                                    <polygon points="3,10 9,10 6,14" fill="#bbb" />
+                                </svg></div>
+
+                            <div class="step step-api">
+                                <span class="step-num">02</span>
+                                <div class="step-content">
+                                    <div class="step-title">Gemini Vision API — Object + Context</div>
+                                    <div class="step-desc">Identifies class and relative position of each detected
+                                        hazard.</div>
+                                </div>
+                            </div>
+                            <div class="connector"><svg width="12" height="14">
+                                    <line x1="6" y1="0" x2="6" y2="10" stroke="#bbb" stroke-width="1.5"
+                                        stroke-dasharray="3,2" />
+                                    <polygon points="3,10 9,10 6,14" fill="#bbb" />
+                                </svg></div>
+
+                            <div class="step step-proc">
+                                <span class="step-num">03</span>
+                                <div class="step-content">
+                                    <div class="step-title">Python — Alert Priority + Dual Signal</div>
+                                    <div class="step-desc">Maps hazard distance → PWM intensity for piezo; formats
+                                        screen warning string.</div>
+                                </div>
+                            </div>
+                            <div class="connector"><svg width="12" height="14">
+                                    <line x1="6" y1="0" x2="6" y2="10" stroke="#bbb" stroke-width="1.5"
+                                        stroke-dasharray="3,2" />
+                                    <polygon points="3,10 9,10 6,14" fill="#bbb" />
+                                </svg></div>
+
+                            <div class="step step-out-d">
+                                <span class="step-num">04a</span>
+                                <div class="step-content">
+                                    <div class="step-title">〰 Piezoelectric Haptic Buzz</div>
+                                    <div class="step-desc">PWM signal to piezo disk; buzz intensity ∝ proximity to
+                                        hazard.</div>
+                                </div>
+                            </div>
+                            <div class="connector"><svg width="12" height="14">
+                                    <line x1="6" y1="0" x2="6" y2="10" stroke="#bbb" stroke-width="1.5"
+                                        stroke-dasharray="3,2" />
+                                    <polygon points="3,10 9,10 6,14" fill="#bbb" />
+                                </svg></div>
+
+                            <div class="step step-out-d">
+                                <span class="step-num">04b</span>
+                                <div class="step-content">
+                                    <div class="step-title">🖥 S3 Box Screen Warning + Three.js Flash</div>
+                                    <div class="step-desc">"CAR – 10 FT LEFT" displayed; orb flashes red at hazard
+                                        proximity.</div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- ── 5. Data Flow Note ── -->
+            <div class="section">
+                <div class="section-title">5 · Key Data Structures &amp; Latency Budget</div>
+                <div class="note">
+                    <strong>Precedence Array schema:</strong>
+                    <code style="display:block;font-family:monospace;font-size:11px;margin:6px 0;color:#4a1942;">
+          [ { "label": "car", "direction": "left", "distance_ft": 10, "priority": 1 }, ... ]
+        </code>
+                    Sorted ascending by <code style="font:11px monospace">priority</code>. Priority 1 = imminent danger.
+                    &nbsp;|&nbsp; <strong>Latency budget:</strong> Camera capture → Gemini (~800 ms) → TTS/haptic
+                    dispatch (~400 ms) → output → &lt;2 s total.
+                </div>
+            </div>
+
+        </div><!-- /doc-body -->
+
+        <!-- ── Footer ── -->
+        <div class="doc-footer">
+            <span>DigiGuide · Technical Design v1.0 · SodaHacks 2026</span>
+            <span>ESP32 S3 Box 3 · Gemini · ElevenLabs · Selenium · Three.js</span>
+        </div>
+
+    </div>
+</body>
+
+</html>
