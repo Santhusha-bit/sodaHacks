@@ -1,6 +1,6 @@
-# 🚗 Blind Driver Safety Agent
+# 🚗 Blind Pedestrian Safety Agent
 
-> An AI-powered co-pilot for blind/visually-impaired car occupants — combining tactile, audio, and real-time traffic awareness.
+> An AI-powered agent for blind/visually-impaired pedestrians — combining tactile, audio, and real-time traffic awareness.
 
 ## Hardware
 
