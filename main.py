@@ -51,9 +51,34 @@ Examples:
     return p.parse_args()
 
 
+def run_web_server():
+    """Simple static file server for the dashboard."""
+    import http.server
+    import socketserver
+    import os
+
+    PORT = 8080
+    DIRECTORY = os.path.join(os.path.dirname(__file__), "dashboard")
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory=DIRECTORY, **kwargs)
+
+        def log_message(self, format, *args):
+            pass  # Suppress logs to keep terminal clean
+
+    with socketserver.TCPServer(("", PORT), Handler) as httpd:
+        logger.info(f"🌐 Web dashboard available at http://localhost:{PORT}")
+        httpd.serve_forever()
+
+
 async def main():
     args = parse_args()
     logging.getLogger().setLevel(getattr(logging, args.log_level))
+
+    # Start web server in background thread
+    import threading
+    threading.Thread(target=run_web_server, daemon=True).start()
 
     if args.port:
         os.environ["SERIAL_PORT"] = args.port

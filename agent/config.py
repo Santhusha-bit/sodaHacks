@@ -15,7 +15,8 @@ class Config:
     elevenlabs_api_key: str
     elevenlabs_voice_id: str
 
-    # Google Gemini (vision / object recognition)
+    # Google Cloud Vision (object recognition)
+    google_vision_api_key: str
     gemini_api_key: str
 
     # Serial / ESP32
@@ -30,6 +31,7 @@ def load_config() -> Config:
     return Config(
         elevenlabs_api_key=os.getenv("ELEVENLABS_API_KEY", ""),
         elevenlabs_voice_id=os.getenv("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM"),
+        google_vision_api_key=os.getenv("GOOGLE_VISION_API_KEY", ""),
         gemini_api_key=os.getenv("GEMINI_API_KEY", ""),
         serial_port=os.getenv("SERIAL_PORT", "/dev/cu.usbserial-0001"),
         serial_baud=int(os.getenv("SERIAL_BAUD", "115200")),

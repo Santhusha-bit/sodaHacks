@@ -78,7 +78,7 @@ class PedestrianAgent:
         # Subsystems
         self.bridge    = SerialBridge(config.serial_port, config.serial_baud, mock=hw_mock)
         self.tts       = TTSClient(config.elevenlabs_api_key, config.elevenlabs_voice_id, mock=tts_mock)
-        self.gemini    = GeminiVision(api_key=config.gemini_api_key, mock=gemini_mock)
+        self.gemini    = GeminiVision(api_key=config.google_vision_api_key, mock=gemini_mock)
         self.cam_stream = CameraStreamServer(port=8766)
         self.camera    = CameraBridge(
             stream_url=PhoneCameraConfig.from_env(),
