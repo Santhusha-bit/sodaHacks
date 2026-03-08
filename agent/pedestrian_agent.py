@@ -28,6 +28,7 @@ from agent.gemini_vision import GeminiVision, GeminiScene
 from agent.alert_queue import build_alert_queue
 from agent.camera_bridge import CameraBridge, PhoneCameraConfig
 from agent.ws_server import DashboardServer
+from agent.camera_server import CameraStreamServer, update_frame as cam_update
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,7 @@ class PedestrianAgent:
         self.bridge    = SerialBridge(config.serial_port, config.serial_baud, mock=hw_mock)
         self.tts       = TTSClient(config.elevenlabs_api_key, config.elevenlabs_voice_id, mock=tts_mock)
         self.gemini    = GeminiVision(api_key=config.gemini_api_key, mock=gemini_mock)
+        self.cam_stream = CameraStreamServer(port=8766)
         self.camera    = CameraBridge(
             stream_url=PhoneCameraConfig.from_env(),
             fps_limit=2,        # Gemini has rate limits — 2fps is plenty
@@ -107,6 +109,7 @@ class PedestrianAgent:
         self.bridge.connect()
         await self.bridge.start_reader()
         await self.dashboard.start()
+        self.cam_stream.start()
 
         self.camera.add_frame_callback(self._on_frame)
         self.camera.start()
@@ -126,6 +129,7 @@ class PedestrianAgent:
             pass
         finally:
             self.camera.stop()
+            self.cam_stream.stop()
             self.bridge.disconnect()
             await self.dashboard.stop()
             logger.info("[Agent] Shutdown complete.")
@@ -138,9 +142,11 @@ class PedestrianAgent:
     def _on_frame(self, frame):
         """Called by CameraBridge on each frame. Runs in background thread."""
         try:
+            # Forward raw frame to MJPEG stream server for dashboard preview
+            if frame is not None:
+                cam_update(frame)
             scene = self.gemini.analyze_frame(frame)
             self._scene = scene
-            # Rebuild alert queue immediately after new scene
             self._alert_queue = build_alert_queue(scene, self._distance_cm)
         except Exception as e:
             logger.error(f"[Gemini] Frame error: {e}")

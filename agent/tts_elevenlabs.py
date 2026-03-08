@@ -112,8 +112,23 @@ class TTSClient:
             try:
                 self._generate_and_play(text, urgency)
             except Exception as e:
-                logger.error(f"[TTS] speak failed: {e}")
-                print(f"[TTS FALLBACK] 🔊 [{urgency.upper()}]: {text}")
+                err = str(e)
+                if "quota_exceeded" in err or "401" in err:
+                    # ElevenLabs credits exhausted — fall back to macOS say
+                    self._say_fallback(text, urgency)
+                else:
+                    logger.error(f"[TTS] speak failed: {e}")
+                    print(f"[TTS FALLBACK] 🔊 [{urgency.upper()}]: {text}")
+
+    def _say_fallback(self, text: str, urgency: UrgencyLevel):
+        """Use macOS built-in say command when ElevenLabs is unavailable."""
+        import subprocess
+        # Pick a voice that matches urgency: calm=Samantha, danger=Alex (faster)
+        voice = {"danger": "Alex", "caution": "Samantha", "calm": "Samantha"}.get(urgency, "Samantha")
+        rate  = {"danger": "220",  "caution": "180",       "calm": "160"}.get(urgency, "180")
+        logger.info(f"[TTS] 🍎 macOS say [{urgency.upper()}]: {text[:60]}")
+        subprocess.Popen(["say", "-v", voice, "-r", rate, text])
+
 
     def _generate_and_play(self, text: str, urgency: UrgencyLevel):
         from elevenlabs import VoiceSettings

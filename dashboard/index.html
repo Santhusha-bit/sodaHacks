@@ -61,7 +61,7 @@
     .grid {
       display: grid;
       grid-template-columns: 340px 1fr;
-      grid-template-rows: auto auto 1fr;
+      grid-template-rows: auto auto auto 1fr;
       gap: 16px;
     }
     @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
@@ -236,17 +236,6 @@
     .badge-calm    { background:#002a10; color:#69f0ae; border: 1px solid #005a20; }
     .detect-empty  { color: var(--muted); font-size: 13px; text-align: center; padding: 16px; }
 
-    /* ── Emotion ─────────────────────────────────────────────────── */
-    #emotion-card { grid-column: 1 / -1; grid-row: 3; }
-    .emotion-bars { display: flex; gap: 24px; flex-wrap: wrap; }
-    .emotion-bar { flex: 1; min-width: 140px; }
-    .emotion-name { font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
-    .bar-track { background: #0a1522; border-radius: 100px; height: 8px; overflow: hidden; }
-    .bar-fill { height: 100%; border-radius: 100px; transition: width .5s ease; }
-    .bar-stress { background: linear-gradient(90deg, #ff1744, #f50057); }
-    .bar-calm   { background: linear-gradient(90deg, #00e676, #00bfa5); }
-    .bar-fear   { background: linear-gradient(90deg, #ff6d00, #ff9100); }
-    .emotion-value { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
     /* ── Log ─────────────────────────────────────────────────────── */
     #log-card { grid-column: 1 / -1; }
@@ -270,7 +259,7 @@
   <div class="logo">🦯</div>
   <div>
     <h1>Pedestrian Navigation Agent</h1>
-    <p>ESP32-S3-BOX-3 · YOLOv8 Vision · ElevenLabs Voice · Hume Emotion</p>
+    <p>ESP32-S3-BOX-3 · Gemini 2.0 Vision · ElevenLabs Voice</p>
   </div>
   <div class="ws-badge disconnected" id="ws-badge">⚡ Disconnected</div>
 </header>
@@ -287,8 +276,18 @@
     <div class="speech-bubble" id="speech-bubble">Waiting for agent…</div>
   </div>
 
+  <!-- Camera Feed -->
+  <div class="card" id="camera-card" style="grid-column:1;grid-row:2;padding:16px">
+    <div class="card-title">Live Camera (FaceTime)</div>
+    <img id="cam-feed"
+         src="http://localhost:8766/stream"
+         style="width:100%;border-radius:10px;background:#050a12;min-height:120px"
+         alt="Camera feed" />
+    <div style="margin-top:10px;font-size:12px;padding:10px 14px;background:#0a1522;border-radius:10px;border:1px solid var(--border);color:#bdd0f0;font-style:italic;min-height:36px" id="gemini-summary">Waiting for Gemini…</div>
+  </div>
+
   <!-- Distance Sensor -->
-  <div class="card" id="distance-card">
+  <div class="card" id="distance-card" style="grid-column:1;grid-row:3">
     <div class="card-title">Distance Sensor (HC-SR04)</div>
     <div class="distance-display">
       <div class="distance-value" id="dist-value">—</div>
@@ -324,33 +323,12 @@
 
   <!-- Detections -->
   <div class="card" id="detections-card">
-    <div class="card-title">Object Detections (YOLOv8)</div>
+    <div class="card-title">Gemini Object Recognition</div>
     <div class="detect-list" id="detect-list">
       <div class="detect-empty">No objects detected</div>
     </div>
   </div>
 
-  <!-- Emotion -->
-  <div class="card" id="emotion-card">
-    <div class="card-title">Pedestrian Emotion (Hume EVI)</div>
-    <div class="emotion-bars">
-      <div class="emotion-bar">
-        <div class="emotion-name">Stress</div>
-        <div class="bar-track"><div class="bar-fill bar-stress" id="bar-stress" style="width:0%"></div></div>
-        <div class="emotion-value" id="val-stress">0.00</div>
-      </div>
-      <div class="emotion-bar">
-        <div class="emotion-name">Calm</div>
-        <div class="bar-track"><div class="bar-fill bar-calm" id="bar-calm" style="width:100%"></div></div>
-        <div class="emotion-value" id="val-calm">1.00</div>
-      </div>
-      <div class="emotion-bar">
-        <div class="emotion-name">Fear</div>
-        <div class="bar-track"><div class="bar-fill bar-fear" id="bar-fear" style="width:0%"></div></div>
-        <div class="emotion-value" id="val-fear">0.00</div>
-      </div>
-    </div>
-  </div>
 
   <!-- Log -->
   <div class="card" id="log-card">
@@ -445,31 +423,28 @@
       crossText.textContent = 'Not safe to cross';
     }
 
-    // ── Detections ────────────────────────────────────────────────
+    // ── Gemini scene summary ──────────────────────────────────────
+    const summaryEl = document.getElementById('gemini-summary');
+    if (summaryEl && d.scene_summary) summaryEl.textContent = '👁 ' + d.scene_summary;
+
+    // ── Detections (Gemini format) ────────────────────────────────
     const list = document.getElementById('detect-list');
     const dets = d.detections || [];
     if (dets.length === 0) {
-      list.innerHTML = '<div class="detect-empty">No objects detected</div>';
+      list.innerHTML = '<div class="detect-empty">Scene clear — no hazards detected</div>';
     } else {
       list.innerHTML = dets.map(det => {
         const icon = DET_ICONS[det.label] || '📦';
         const badge = `badge-${det.urgency}`;
-        const conf = Math.round(det.confidence * 100);
         return `
           <div class="detect-row">
             <span class="detect-icon">${icon}</span>
             <span class="detect-label">${det.label.charAt(0).toUpperCase() + det.label.slice(1)}</span>
-            <span class="detect-meta">${det.position} · ${det.distance_zone} · ${conf}%</span>
+            <span class="detect-meta">${det.position || ''} · ${det.distance_hint || ''}</span>
             <span class="detect-badge ${badge}">${det.urgency}</span>
           </div>`;
       }).join('');
     }
-
-    // ── Emotion ───────────────────────────────────────────────────
-    const emo = d.emotion || {};
-    setBar('stress', emo.stress || 0);
-    setBar('calm',   emo.calm   || 0);
-    setBar('fear',   emo.fear   || 0);
 
     // ── Log ───────────────────────────────────────────────────────
     const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
