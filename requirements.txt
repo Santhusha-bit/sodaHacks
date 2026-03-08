@@ -11,6 +11,12 @@ webdriver-manager>=4.0.1
 
 # Audio Playback
 pygame>=2.5.0
+sounddevice>=0.4.6
+
+# Vision / AI
+opencv-python>=4.9.0
+numpy>=1.26.0
+google-genai>=0.3.0
 
 # Async / Networking
 aiohttp>=3.9.0

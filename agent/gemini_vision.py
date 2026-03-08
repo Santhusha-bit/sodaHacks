@@ -1,29 +1,47 @@
 """
-gemini_vision.py — Re-implemented using Google Cloud Vision API.
-Keeps the same interface (GeminiVision, GeminiScene) to avoid breaking the agent.
+gemini_vision.py — Official Google Gemini Vision implementation.
+Uses the new google-genai SDK for real-time pedestrian safety analysis.
 """
 import base64
 import json
 import logging
 import time
-import requests
 import cv2
 from dataclasses import dataclass, field
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Urgency mapping for common objects detected by Vision API
-URGENCY_MAP = {
-    "car": "danger",
-    "bus": "danger",
-    "truck": "danger",
-    "motorcycle": "danger",
-    "bicycle": "caution",
-    "person": "caution",
-    "traffic light": "caution",
-    "stop sign": "danger",
+# ── Prompt ────────────────────────────────────────────────────────────────────
+
+PEDESTRIAN_PROMPT = """You are a real-time vision assistant for a blind pedestrian at a crosswalk.
+Analyze this camera frame and return ONLY a JSON object (no markdown, no explanation) using this schema:
+
+{
+  "objects": [
+    {
+      "label": "car",
+      "urgency": "danger",
+      "position": "center",
+      "distance_hint": "close",
+      "speech": "Car directly ahead, about 8 feet away."
+    }
+  ],
+  "traffic_light": "red",
+  "walk_signal": false,
+  "safe_to_cross": false,
+  "scene_summary": "Red car approaching. Red light. Do not cross."
 }
+
+Rules:
+- urgency: "danger" | "caution" | "calm"
+- position: "left" | "center" | "right"
+- distance_hint: "very close" (<3ft), "close" (3-10ft), "moderate" (10-30ft), "far" (>30ft)
+- Only include objects relevant to pedestrian safety
+- List danger objects first
+"""
+
+# ── Data model ────────────────────────────────────────────────────────────────
 
 @dataclass
 class GeminiObject:
@@ -52,101 +70,93 @@ class GeminiScene:
             return "caution"
         return "calm"
 
+# ── Detector ──────────────────────────────────────────────────────────────────
+
 class GeminiVision:
     def __init__(self, api_key: str, mock: bool = False):
+        real_key = bool(api_key) and not api_key.startswith("your_")
+        self.mock = mock or not real_key
+        self._client = None
         self.api_key = api_key
-        self.mock = mock
-        self.url = f"https://vision.googleapis.com/v1/images:annotate?key={self.api_key}"
-        
-        # Check for placeholder keys
-        if self.mock or not self.api_key or "your_gemini" in self.api_key:
+
+        if not self.mock:
+            self._init_client(api_key)
+
+    def _init_client(self, api_key: str):
+        try:
+            from google import genai
+            # Explicitly force API version v1 to avoid 404s in v1beta
+            self._client = genai.Client(
+                api_key=api_key,
+            )
+            logger.info("[Gemini] ✅ Gemini 2.5 Flash ready (v1beta API)")
+        except Exception as e:
+            logger.error(f"[Gemini] SDK Init failed: {e}")
             self.mock = True
-            logger.info("[Vision] 🎭 Running in MOCK mode")
-        else:
-            logger.info("[Vision] ✅ Google Cloud Vision API initialized")
 
     def analyze_frame(self, frame) -> GeminiScene:
         if self.mock:
             return self._mock_scene()
 
         try:
-            _, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 75])
-            content = base64.b64encode(buffer).decode("utf-8")
-
-            request_body = {
-                "requests": [{
-                    "image": {"content": content},
-                    "features": [
-                        {"type": "OBJECT_LOCALIZATION", "maxResults": 10},
-                        {"type": "LABEL_DETECTION", "maxResults": 5}
-                    ]
-                }]
-            }
-
-            response = requests.post(self.url, json=request_body, timeout=5)
-            response.raise_for_status()
-            data = response.json()
-
-            return self._parse(data)
-        except Exception as e:
-            logger.error(f"[Vision] API error: {e}")
-            return GeminiScene(error=str(e), scene_summary="Vision AI currently unavailable.")
-
-    def _parse(self, data) -> GeminiScene:
-        try:
-            res = data["responses"][0]
-            gemini_objects = []
+            from google.genai import types
             
-            objects = res.get("localizedObjectAnnotations", [])
-            for obj in objects:
-                label = obj["name"].lower()
-                conf = obj["score"]
-                
-                # Position
-                vertices = obj.get("boundingPoly", {}).get("normalizedVertices", [])
-                pos_str = "center"
-                if vertices:
-                    avg_x = sum(v.get("x", 0.5) for v in vertices) / len(vertices)
-                    if avg_x < 0.33: pos_str = "left"
-                    elif avg_x > 0.66: pos_str = "right"
-                
-                # Distance
-                dist_hint = "far"
-                if len(vertices) >= 2:
-                    xs = [v.get("x", 0.5) for v in vertices]
-                    width = max(xs) - min(xs)
-                    if width > 0.4: dist_hint = "very close"
-                    elif width > 0.15: dist_hint = "close"
-                
-                urgency = URGENCY_MAP.get(label, "calm")
-                speech = f"{label.capitalize()} {pos_str}, {dist_hint}." if urgency != "calm" else ""
+            # Encode frame
+            _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 75])
+            img_bytes = bytes(buf)
 
-                gemini_objects.append(GeminiObject(
-                    label=label,
-                    urgency=urgency,
-                    position=pos_str,
-                    distance_hint=dist_hint,
-                    speech=speech
-                ))
+            # Generate content using Gemini 2.5 Flash
+            response = self._client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=[
+                    PEDESTRIAN_PROMPT,
+                    types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg"),
+                ]
+            )
 
-            # Scene summary from labels
-            labels = [l["description"] for l in res.get("labelAnnotations", [])[:3]]
-            summary = "Looking at: " + ", ".join(labels) if labels else "Clear path"
+            raw_text = response.text.strip() if response.text else ""
+            return self._parse_json(raw_text)
+
+        except Exception as e:
+            logger.error(f"[Gemini] API error: {e}")
+            return GeminiScene(error=str(e), scene_summary="Gemini is currently unavailable.")
+
+    def _parse_json(self, raw: str) -> GeminiScene:
+        cleaned = raw.strip()
+        if cleaned.startswith("```"):
+            lines = cleaned.split("\n")
+            cleaned = "\n".join(lines[1:-1])
+
+        try:
+            data = json.loads(cleaned)
+            objects = [
+                GeminiObject(
+                    label=o.get("label", "object"),
+                    urgency=o.get("urgency", "caution"),
+                    position=o.get("position", "center"),
+                    distance_hint=o.get("distance_hint", "unknown"),
+                    speech=o.get("speech", ""),
+                )
+                for o in data.get("objects", [])
+            ]
 
             return GeminiScene(
-                objects=gemini_objects,
-                scene_summary=summary,
-                safe_to_cross=False # Harder to tell without Gemini's logic, defaulting safe
+                objects=objects,
+                traffic_light=data.get("traffic_light"),
+                walk_signal=data.get("walk_signal"),
+                safe_to_cross=bool(data.get("safe_to_cross", False)),
+                scene_summary=data.get("scene_summary", ""),
+                raw_response=raw,
             )
         except Exception as e:
-            logger.error(f"[Vision] Parse error: {e}")
-            return GeminiScene(error="parse error")
+            logger.warning(f"[Gemini] JSON Parse failed: {e}")
+            return GeminiScene(error=str(e), scene_summary="Error parsing vision data.")
 
     def _mock_scene(self) -> GeminiScene:
         import random
         scenarios = [
-            GeminiScene(scene_summary="Mock: Clear path ahead.", objects=[]),
-            GeminiScene(scene_summary="Mock: Car detected.", objects=[
+            GeminiScene(scene_summary="Mock: Path clear.", objects=[]),
+            GeminiScene(scene_summary="Mock: Vehicle ahead.", objects=[
                 GeminiObject("car", "danger", "center", "close", "Car directly ahead.")
             ]),
         ]

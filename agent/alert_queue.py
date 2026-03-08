@@ -114,9 +114,22 @@ def build_alert_queue(
             if obj.urgency == "caution":
                 alerts.append(_alert("caution", obj.speech, "gemini"))
 
-        # ── All clear ─────────────────────────────────────────────────────────
-        if scene.safe_to_cross and not alerts:
-            alerts.append(_alert("calm", "Path is clear. Safe to cross.", "crossing"))
+        if scene.safe_to_cross and not any(a["urgency"] == "danger" for a in alerts):
+            if not any(a["source"] == "crossing" for a in alerts):
+                alerts.append(_alert("calm", "Path is clear. Safe to cross.", "crossing"))
+
+        # ── Scene Summary (Merge with crossing or append, lowest priority) ─────
+        if scene.scene_summary:
+            # If we already have a crossing alert, merge them to avoid 
+            # saying two overlapping calm messages.
+            merged = False
+            for a in alerts:
+                if a["source"] == "crossing":
+                    a["text"] = f"{a['text']} Also, {scene.scene_summary}"
+                    merged = True
+                    break
+            if not merged:
+                alerts.append(_alert("calm", scene.scene_summary, "gemini_summary"))
 
     # ── Sort by priority (danger first) ──────────────────────────────────────
     alerts.sort(key=lambda a: a["priority"])

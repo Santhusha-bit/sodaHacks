@@ -22,3 +22,4 @@ env/
 # Logs
 agent.log
 *.log
+service-account.json

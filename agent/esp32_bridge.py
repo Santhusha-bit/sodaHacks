@@ -45,6 +45,7 @@ HAPTIC_PATTERNS = {
     "pulse":  "pulse",    # one 300ms buzz — CAUTION, motion detected
     "double": "double",   # two quick buzzes — moderate hazard
     "rapid":  "rapid",    # continuous rapid buzz — DANGER
+    "long":   "long",     # long steady buzz — CALM / signal
 }
 
 
@@ -180,14 +181,24 @@ class SerialBridge:
         return None
 
     async def _mock_reader(self):
-        """Simulates PIR sensor firing periodically for testing."""
+        """Simulates sensors firing periodically for testing."""
         import random
-        logger.info("[MockSerial] Simulated PIR reader started — motion fires every ~15s")
+        logger.info("[MockSerial] Simulated reader started — events every few seconds")
         while self._connected:
-            await asyncio.sleep(random.uniform(10, 20))
-            event = SensorEvent(event_type="motion", detected=True, raw={"event": "motion", "detected": True})
+            await asyncio.sleep(random.uniform(5, 10))
+            
+            # Randomly pick between PIR motion and Distance update
+            if random.random() > 0.4:
+                # Distance update: mostly safe (200-400cm), occasionally a hazard (20-100cm)
+                cm = random.choice([random.uniform(200, 450), random.uniform(20, 100)])
+                event = SensorEvent(event_type="distance", raw={"event": "distance", "cm": cm})
+                logger.info(f"[MockSerial] 📏 Simulated distance: {cm:.1f} cm")
+            else:
+                # PIR Motion
+                event = SensorEvent(event_type="motion", detected=True, raw={"event": "motion", "detected": True})
+                logger.info("[MockSerial] 🚨 Simulated PIR motion event")
+                
             await self._event_queue.put(event)
-            logger.info("[MockSerial] 🚨 Simulated PIR motion event")
 
     @staticmethod
     def _parse_event(line: str) -> Optional[SensorEvent]:

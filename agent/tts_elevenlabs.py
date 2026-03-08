@@ -127,7 +127,7 @@ class TTSClient:
         voice = {"danger": "Alex", "caution": "Samantha", "calm": "Samantha"}.get(urgency, "Samantha")
         rate  = {"danger": "220",  "caution": "180",       "calm": "160"}.get(urgency, "180")
         logger.info(f"[TTS] 🍎 macOS say [{urgency.upper()}]: {text[:60]}")
-        subprocess.Popen(["say", "-v", voice, "-r", rate, text])
+        subprocess.run(["say", "-v", voice, "-r", rate, text])
 
 
     def _generate_and_play(self, text: str, urgency: UrgencyLevel):

@@ -1,19 +1,5 @@
 """
 pedestrian_agent.py — Blind Pedestrian Navigation Agent (Gemini + ElevenLabs pipeline).
-
-Pipeline:
-  1. Phone camera frame  →  GeminiVision (Gemini 1.5 Flash)
-                            → natural language scene description (JSON)
-  2. HC-SR04 distance    →  exact proximity in cm
-  3. Fuse both           →  build_alert_queue() → priority-sorted alerts[]
-  4. ElevenLabs          →  reads alerts[0] (highest priority) aloud
-  5. ESP32 haptic        →  vibrates with urgency-matched pattern
-  6. Dashboard           →  broadcasts full state via WebSocket
-
-Alert priority order (always read most urgent first):
-  1. DANGER   — sensor ≤60cm  OR  Gemini danger object
-  2. CAUTION  — red light / don't walk / caution object
-  3. CALM     — safe to cross / path clear
 """
 
 import asyncio
@@ -33,7 +19,7 @@ from agent.camera_server import CameraStreamServer, update_frame as cam_update
 logger = logging.getLogger(__name__)
 
 
-# ── Alert throttle (prevent repeating same alert too often) ───────────────────
+# ── Alert throttle ────────────────────────────────────────────────────────────
 
 class AlertThrottle:
     def __init__(self, cooldown_s: float = 6.0):
@@ -48,65 +34,55 @@ class AlertThrottle:
         return False
 
     def key_for(self, alert: dict) -> str:
-        """Stable key for deduplication — based on urgency + first 40 chars."""
         return f"{alert['urgency']}:{alert['text'][:40]}"
 
 
 # ── Main Agent ────────────────────────────────────────────────────────────────
 
 class PedestrianAgent:
-    """
-    Orchestrates the full pedestrian navigation pipeline.
-    Gemini Vision → Priority Queue → ElevenLabs Voice + ESP32 Haptic.
-    """
-
     def __init__(self, config: Config, mock: bool = False):
         self.config = config
-
-        # Hardware mock: simulates ESP32 serial + camera
-        hw_mock  = mock
-        # API mock: only if key is missing
-        tts_mock    = not bool(config.elevenlabs_api_key)
-        gemini_mock = not bool(config.gemini_api_key)
-
-        if mock:
-            if not tts_mock:
-                logger.info("[Agent] --mock: hardware simulated, ElevenLabs is REAL ✅")
-            if not gemini_mock:
-                logger.info("[Agent] --mock: hardware simulated, Gemini Vision is REAL ✅")
+        self._running = False
+        self._scene = GeminiScene()
+        self._distance_cm = 400.0 # Default to safe distance (4 meters)
+        self._alert_queue = []
+        self._loop = None # Main event loop for thread-safe broadcasts
 
         # Subsystems
-        self.bridge    = SerialBridge(config.serial_port, config.serial_baud, mock=hw_mock)
-        self.tts       = TTSClient(config.elevenlabs_api_key, config.elevenlabs_voice_id, mock=tts_mock)
-        self.gemini    = GeminiVision(api_key=config.google_vision_api_key, mock=gemini_mock)
+        hw_mock = mock
+        tts_mock = not bool(config.elevenlabs_api_key)
+        gemini_mock = not bool(config.gemini_api_key)
+
+        self.bridge = SerialBridge(config.serial_port, config.serial_baud, mock=hw_mock)
+        self.tts = TTSClient(config.elevenlabs_api_key, config.elevenlabs_voice_id, mock=tts_mock)
+        self.gemini = GeminiVision(api_key=config.gemini_api_key, mock=gemini_mock)
         self.cam_stream = CameraStreamServer(port=8766)
-        self.camera    = CameraBridge(
+        self.camera = CameraBridge(
             stream_url=PhoneCameraConfig.from_env(),
-            fps_limit=2,        # Gemini has rate limits — 2fps is plenty
-            mock=hw_mock,
+            fps_limit=0.20, # ~1 frame every 5s (12 RPM vs 20 RPM limit)
+            mock=False,
         )
         self.dashboard = DashboardServer(port=config.ws_port)
-        self.throttle  = AlertThrottle(cooldown_s=7.0)
-
-        # Live state
-        self._distance_cm:  Optional[float] = None
-        self._scene:        GeminiScene     = GeminiScene()
-        self._alert_queue:  list[dict]      = []
-        self._running = False
-
-    # ── Lifecycle ─────────────────────────────────────────────────────────────
+        self.throttle = AlertThrottle(cooldown_s=7.0)
 
     async def run(self):
         self._running = True
+        self._loop = asyncio.get_running_loop()
 
-        print()
-        print("╔══════════════════════════════════════════════════════════════╗")
+        print("\n╔══════════════════════════════════════════════════════════════╗")
         print("║  👁  Blind Pedestrian Navigation Agent                      ║")
         print("║      Gemini Vision → Priority Queue → ElevenLabs Voice      ║")
-        print("╚══════════════════════════════════════════════════════════════╝")
-        print()
+        print("╚══════════════════════════════════════════════════════════════╝\n")
 
-        self.bridge.connect()
+        if not self.bridge.connect():
+            if not self.config.serial_port or "usbserial" in self.config.serial_port:
+                logger.info("[Agent] ESP32 hardware not detected. Enabling sensor simulation...")
+                self.bridge.mock = True
+                self.bridge.connect()
+            else:
+                logger.error("[Agent] Could not connect to ESP32. Check your SERIAL_PORT in .env.")
+                # We'll still try to start the reader (it just won't do much if not connected)
+
         await self.bridge.start_reader()
         await self.dashboard.start()
         self.cam_stream.start()
@@ -114,74 +90,60 @@ class PedestrianAgent:
         self.camera.add_frame_callback(self._on_frame)
         self.camera.start()
 
-        self.tts.speak(
-            "Pedestrian navigation agent online. "
-            "Point the camera at the intersection ahead. I will guide you.",
-            urgency="calm",
-        )
+        self.tts.speak("Pedestrian navigation agent online.", urgency="calm")
 
         try:
-            await asyncio.gather(
-                self._distance_loop(),
-                self._speak_loop(),
-            )
-        except asyncio.CancelledError:
-            pass
+            await asyncio.gather(self._distance_loop(), self._speak_loop())
         finally:
-            self.camera.stop()
-            self.cam_stream.stop()
-            self.bridge.disconnect()
-            await self.dashboard.stop()
-            logger.info("[Agent] Shutdown complete.")
+            await self.stop()
 
     async def stop(self):
         self._running = False
-
-    # ── Camera → Gemini (runs in camera thread) ───────────────────────────────
+        self.camera.stop()
+        self.cam_stream.stop()
+        self.bridge.disconnect()
+        await self.dashboard.stop()
+        logger.info("[Agent] Shutdown complete.")
 
     def _on_frame(self, frame):
-        """Called by CameraBridge on each frame. Runs in background thread."""
+        """Runs in CameraThread (background)."""
+        if frame is None: return
         try:
-            # Forward raw frame to MJPEG stream server for dashboard preview
-            if frame is not None:
-                cam_update(frame)
+            cam_update(frame)
             scene = self.gemini.analyze_frame(frame)
             self._scene = scene
             self._alert_queue = build_alert_queue(scene, self._distance_cm)
+
+            # Thread-safe broadcast to the main loop (dashboard)
+            if self._loop and self._loop.is_running():
+                from dataclasses import asdict
+                status = {
+                    "urgency": scene.dominant_urgency,
+                    "scene_summary": scene.scene_summary,
+                    "detections": [asdict(obj) for obj in scene.objects],
+                    "safe_to_cross": scene.safe_to_cross,
+                    "traffic_light": scene.traffic_light,
+                    "walk_signal": scene.walk_signal,
+                    "distance_cm": self._distance_cm,
+                }
+                asyncio.run_coroutine_threadsafe(self.dashboard.broadcast(status), self._loop)
         except Exception as e:
             logger.error(f"[Gemini] Frame error: {e}")
 
-    # ── Distance sensor loop ──────────────────────────────────────────────────
-
     async def _distance_loop(self):
-        """Read HC-SR04 distance events from ESP32 serial."""
         async for event in self.bridge.events():
-            if not self._running:
-                break
+            if not self._running: break
             if event.event_type == "distance" and event.raw:
                 cm = event.raw.get("cm", -1)
                 if cm > 0:
                     self._distance_cm = float(cm)
-                    # Immediately rebuild queue when distance changes significantly
                     self._alert_queue = build_alert_queue(self._scene, self._distance_cm)
 
-    # ── Alert speaker loop ────────────────────────────────────────────────────
-
     async def _speak_loop(self):
-        """
-        Every 2s: look at the top of the priority queue and speak the
-        highest-urgency alert that hasn't been recently spoken.
-        """
-        logger.info("[Agent] Alert speaker loop started")
-
         while self._running:
-            await asyncio.sleep(2.0)
+            await asyncio.sleep(3.0)
             queue = self._alert_queue
-
-            if not queue:
-                continue
-
-            # Walk the queue in priority order — speak first unthrottled alert
+            if not queue: continue
             for alert in queue:
                 key = self.throttle.key_for(alert)
                 if self.throttle.should_speak(key):
@@ -189,48 +151,24 @@ class PedestrianAgent:
                     await self._push_dashboard(alert)
                     break
 
-    # ── Output ────────────────────────────────────────────────────────────────
-
     def _dispatch(self, alert: dict):
         urgency = alert["urgency"]
-        text    = alert["text"]
-        haptic  = alert["haptic"]
-
+        text = alert["text"]
         logger.info(f"[Alert] [{urgency.upper()}] {text}")
-        self.bridge.send_haptic(haptic)
-        self.bridge.send_display(str(text)[:24], urgency.upper())
+        self.bridge.send_haptic(alert["haptic"])
+        self.bridge.send_display(text[:24], urgency.upper())
         self.tts.speak(text, urgency=urgency)
 
     async def _push_dashboard(self, spoken_alert: dict):
-        scene = self._scene
+        # Full state push for the dashboard log/Crossing ring
         state = {
-            "level":         spoken_alert["urgency"].upper(),
-            "speech":        spoken_alert["text"],
-            "source":        spoken_alert.get("source", ""),
-            "distance_cm":   float(f"{self._distance_cm:.1f}") if self._distance_cm is not None else None,
-            "safe_to_cross": scene.safe_to_cross,
-            "traffic_light": scene.traffic_light,
-            "walk_signal":   scene.walk_signal,
-            "scene_summary": scene.scene_summary,
-            "alert_queue": [
-                {
-                    "priority": a["priority"],
-                    "urgency":  a["urgency"],
-                    "text":     a["text"],
-                    "source":   a["source"],
-                }
-                for a in self._alert_queue
-            ],
-            "detections": [
-                {
-                    "label":         o.label,
-                    "urgency":       o.urgency,
-                    "position":      o.position,
-                    "distance_hint": o.distance_hint,
-                    "speech":        o.speech,
-                }
-                for o in scene.objects
-            ],
-            "timestamp": time.time(),
+            "level": spoken_alert["urgency"].upper(),
+            "speech": spoken_alert["text"],
+            "distance_cm": self._distance_cm,
+            "scene_summary": self._scene.scene_summary,
+            "safe_to_cross": self._scene.safe_to_cross,
+            "traffic_light": self._scene.traffic_light,
+            "walk_signal": self._scene.walk_signal,
+            # (Dashboard also gets individual detections from _on_frame broadcast)
         }
         await self.dashboard.broadcast(state)
