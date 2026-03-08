@@ -372,7 +372,7 @@
                     </div>
                     <div class="overview-card">
                         <h4>Scope</h4>
-                        <p>ESP32 S3 Box 3 firmware, a Python orchestration backend, Gemini Vision API integration,
+                        <p>ESP32 S3 Box 3 firmware, a Python orchestration backend, Google Vision API integration,
                             ElevenLabs TTS, piezoelectric haptic output, and a Three.js companion UI.</p>
                     </div>
                     <div class="overview-card">
@@ -511,7 +511,7 @@
                         <rect x="488" y="128" width="120" height="64" rx="6" fill="#fff" stroke="#64b5f6"
                             stroke-width="1.5" />
                         <text x="548" y="148" text-anchor="middle" font-size="10" font-weight="600" fill="#0288d1">🔮
-                            Gemini</text>
+                            Vision API</text>
                         <text x="548" y="162" text-anchor="middle" font-size="10" font-weight="600"
                             fill="#0288d1">Vision API</text>
                         <text x="548" y="177" text-anchor="middle" font-size="8.5" fill="#888">object detect +
@@ -580,31 +580,20 @@
                         <text x="614" y="284" text-anchor="middle" font-size="9" font-weight="600" fill="#880e4f">📳
                             Haptic + Screen Warning (Deaf)</text>
 
-                        <!-- Selenium box -->
-                        <rect x="740" y="135" width="105" height="50" rx="6" fill="#fff" stroke="#64b5f6"
+                        <!-- Three.js box (direct from Python via WebSocket) -->
+                        <rect x="740" y="155" width="105" height="52" rx="6" fill="#fff" stroke="#ce93d8"
                             stroke-width="1.5" />
-                        <text x="792" y="153" text-anchor="middle" font-size="10" font-weight="600" fill="#0288d1">🌐
-                            Selenium</text>
-                        <text x="792" y="167" text-anchor="middle" font-size="9" fill="#0288d1">Browser Agent</text>
-                        <text x="792" y="179" text-anchor="middle" font-size="8.5" fill="#888">web automation</text>
-
-                        <!-- Python → Selenium arrow -->
-                        <line x1="418" y1="155" x2="740" y2="155" stroke="#9c27b0" stroke-width="1"
-                            stroke-dasharray="3,4" />
-                        <polygon points="740,151 748,155 740,159" fill="#9c27b0" />
-
-                        <!-- Three.js box -->
-                        <rect x="740" y="214" width="105" height="50" rx="6" fill="#fff" stroke="#ce93d8"
-                            stroke-width="1.5" />
-                        <text x="792" y="230" text-anchor="middle" font-size="10" font-weight="600" fill="#7b1fa2">✨
+                        <text x="792" y="174" text-anchor="middle" font-size="10" font-weight="600" fill="#7b1fa2">✨
                             Three.js UI</text>
-                        <text x="792" y="244" text-anchor="middle" font-size="9" fill="#7b1fa2">Glowing Orb</text>
-                        <text x="792" y="257" text-anchor="middle" font-size="8.5" fill="#888">visual feedback</text>
+                        <text x="792" y="188" text-anchor="middle" font-size="9" fill="#7b1fa2">Glowing Orb</text>
+                        <text x="792" y="200" text-anchor="middle" font-size="8.5"
+                            fill="#888">ws://localhost:8765</text>
 
-                        <!-- Selenium → Three.js -->
-                        <line x1="792" y1="185" x2="792" y2="214" stroke="#9c27b0" stroke-width="1.5"
+                        <!-- Python → Three.js WebSocket arrow -->
+                        <line x1="418" y1="163" x2="740" y2="178" stroke="#9c27b0" stroke-width="1.5"
                             stroke-dasharray="4,3" />
-                        <polygon points="788,214 796,214 792,222" fill="#9c27b0" />
+                        <polygon points="738,174 746,181 742,172" fill="#9c27b0" />
+                        <text x="582" y="160" text-anchor="middle" font-size="7.5" fill="#9c27b0">WebSocket</text>
 
                     </svg>
                 </div>
@@ -642,7 +631,7 @@
                             <td><span class="tag tag-hw">Hardware</span></td>
                             <td>Measures proximity of detected objects (e.g. 10 ft). Used to determine haptic buzz
                                 intensity.</td>
-                            <td>GPIO analog/digital read on S3 Box. Distance merged with Gemini object list.</td>
+                            <td>GPIO analog/digital read on S3 Box. Distance merged with Google Vision object list.</td>
                         </tr>
                         <tr>
                             <td><strong>Piezoelectric Disk</strong></td>
@@ -655,18 +644,18 @@
                         <tr>
                             <td><strong>Python Backend</strong></td>
                             <td><span class="tag tag-sw">Software</span></td>
-                            <td>Orchestrates the full pipeline: receives frames, calls Gemini, builds precedence array,
+                            <td>Orchestrates the full pipeline: receives frames, calls Google Vision API, builds precedence array,
                                 routes to correct output path.</td>
                             <td>Flask/asyncio server. Precedence array: <code
                                     style="font:11px monospace">[{label, distance, priority}]</code> sorted by severity.
                             </td>
                         </tr>
                         <tr>
-                            <td><strong>Gemini Vision API</strong></td>
+                            <td><strong>Google Vision API</strong></td>
                             <td><span class="tag tag-api">Cloud API</span></td>
                             <td>Classifies objects in each JPEG frame (cars, people, cyclists, traffic lights, etc.) and
                                 returns spatial context as JSON.</td>
-                            <td>Called via <code style="font:11px monospace">gemini-2.0-flash</code>. Prompt instructs
+                            <td>Called via <code style="font:11px monospace">google-cloud-vision</code>. Prompt instructs
                                 model to return JSON list of detected objects with spatial tags.</td>
                         </tr>
                         <tr>
@@ -677,14 +666,7 @@
                             <td>REST API; voice ID configurable. Example output: <em>"Car approaching from your left,
                                     approximately 10 feet."</em></td>
                         </tr>
-                        <tr>
-                            <td><strong>Selenium Agent</strong></td>
-                            <td><span class="tag tag-api">Cloud API</span></td>
-                            <td>Browser automation layer. Handles web-based signal lookups (e.g. live traffic API,
-                                crosswalk state polling).</td>
-                            <td>Headless Chrome; results fed back into precedence array for additional context
-                                enrichment.</td>
-                        </tr>
+
                         <tr>
                             <td><strong>Three.js UI</strong></td>
                             <td><span class="tag tag-sw">Software</span></td>
@@ -700,154 +682,217 @@
             <!-- ── 4. User Flow Pipelines ── -->
             <div class="section">
                 <div class="section-title">4 · User Flow Pipelines</div>
-                <div class="two-col">
 
-                    <!-- Blind -->
-                    <div class="flow-col blind">
-                        <div class="flow-col-header">👁 Blind User — Audio Pipeline</div>
-                        <div class="flow-steps">
+                <!-- ── 4A: BLIND pipeline SVG ── -->
+                <div
+                    style="margin-bottom:10px;font-size:11px;font-weight:700;color:#0277bd;letter-spacing:.5px;text-transform:uppercase;">
+                    👁 Blind User — Audio Pipeline</div>
+                <div class="flowchart-wrap" style="margin-bottom:22px;">
+                    <svg viewBox="0 0 860 150" xmlns="http://www.w3.org/2000/svg"
+                        style="width:100%;height:auto;font-family:'Inter',sans-serif;">
 
-                            <div class="step step-hw">
-                                <span class="step-num">01</span>
-                                <div class="step-content">
-                                    <div class="step-title">ESP32-CAM captures frame</div>
-                                    <div class="step-desc">JPEG at ~5 fps streamed to Python backend over WiFi.</div>
-                                </div>
-                            </div>
-                            <div class="connector"><svg width="12" height="14">
-                                    <line x1="6" y1="0" x2="6" y2="10" stroke="#bbb" stroke-width="1.5"
-                                        stroke-dasharray="3,2" />
-                                    <polygon points="3,10 9,10 6,14" fill="#bbb" />
-                                </svg></div>
+                        <!-- Background strip -->
+                        <rect x="0" y="0" width="860" height="150" fill="#f0f7ff" rx="6" />
 
-                            <div class="step step-api">
-                                <span class="step-num">02</span>
-                                <div class="step-content">
-                                    <div class="step-title">Gemini Vision API — Image Recognition</div>
-                                    <div class="step-desc">Returns JSON: detected objects, labels, and relative
-                                        positions.</div>
-                                </div>
-                            </div>
-                            <div class="connector"><svg width="12" height="14">
-                                    <line x1="6" y1="0" x2="6" y2="10" stroke="#bbb" stroke-width="1.5"
-                                        stroke-dasharray="3,2" />
-                                    <polygon points="3,10 9,10 6,14" fill="#bbb" />
-                                </svg></div>
+                        <!-- Node 1: Real World -->
+                        <rect x="10" y="38" width="100" height="70" rx="6" fill="#fff" stroke="#ffb74d"
+                            stroke-width="1.5" />
+                        <text x="60" y="62" text-anchor="middle" font-size="10" font-weight="700" fill="#e65100">🌍 Real
+                            World</text>
+                        <text x="60" y="77" text-anchor="middle" font-size="8.5" fill="#888">street scene</text>
+                        <text x="60" y="90" text-anchor="middle" font-size="8" fill="#bbb">live video</text>
 
-                            <div class="step step-proc">
-                                <span class="step-num">03</span>
-                                <div class="step-content">
-                                    <div class="step-title">Python — Precedence Array Build</div>
-                                    <div class="step-desc">Fuse PIR distance + object list → rank hazards → pick top
-                                        alert.</div>
-                                </div>
-                            </div>
-                            <div class="connector"><svg width="12" height="14">
-                                    <line x1="6" y1="0" x2="6" y2="10" stroke="#bbb" stroke-width="1.5"
-                                        stroke-dasharray="3,2" />
-                                    <polygon points="3,10 9,10 6,14" fill="#bbb" />
-                                </svg></div>
+                        <!-- Arrow 1: label clearly above line -->
+                        <text x="122" y="62" text-anchor="middle" font-size="8.5" font-weight="600"
+                            fill="#42a5f5">JPEG</text>
+                        <line x1="110" y1="70" x2="139" y2="70" stroke="#42a5f5" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="139,66 147,70 139,74" fill="#42a5f5" />
 
-                            <div class="step step-api">
-                                <span class="step-num">04</span>
-                                <div class="step-content">
-                                    <div class="step-title">ElevenLabs TTS — Speech Synthesis</div>
-                                    <div class="step-desc">Top hazard string → natural speech MP3 → speaker output.
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="connector"><svg width="12" height="14">
-                                    <line x1="6" y1="0" x2="6" y2="10" stroke="#bbb" stroke-width="1.5"
-                                        stroke-dasharray="3,2" />
-                                    <polygon points="3,10 9,10 6,14" fill="#bbb" />
-                                </svg></div>
+                        <!-- Node 2: ESP32-CAM only (no PIR for blind) -->
+                        <rect x="147" y="38" width="108" height="70" rx="6" fill="#fff" stroke="#ffb74d"
+                            stroke-width="1.5" />
+                        <text x="201" y="60" text-anchor="middle" font-size="10" font-weight="700" fill="#e65100">📷
+                            ESP32-CAM</text>
+                        <text x="201" y="75" text-anchor="middle" font-size="8.5" fill="#888">captures frame</text>
+                        <text x="201" y="89" text-anchor="middle" font-size="8" fill="#bbb">~5 fps / WiFi</text>
 
-                            <div class="step step-out">
-                                <span class="step-num">05</span>
-                                <div class="step-content">
-                                    <div class="step-title">🔊 Audio Output + Three.js Orb Pulse</div>
-                                    <div class="step-desc">"Car approaching left, 10 feet." — orb glow syncs with
-                                        playback.</div>
-                                </div>
-                            </div>
+                        <!-- Arrow 2 -->
+                        <text x="270" y="62" text-anchor="middle" font-size="8.5" font-weight="600"
+                            fill="#42a5f5">stream</text>
+                        <line x1="255" y1="70" x2="284" y2="70" stroke="#42a5f5" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="284,66 292,70 284,74" fill="#42a5f5" />
 
-                        </div>
-                    </div>
+                        <!-- Node 3: Gemini -->
+                        <rect x="292" y="38" width="118" height="70" rx="6" fill="#fff" stroke="#64b5f6"
+                            stroke-width="1.5" />
+                        <text x="351" y="60" text-anchor="middle" font-size="10" font-weight="700" fill="#0288d1">☁️ Google Vision API</text>
+                        <text x="351" y="75" text-anchor="middle" font-size="8.5" fill="#888">scene description</text>
+                        <text x="351" y="89" text-anchor="middle" font-size="8" fill="#bbb">returns JSON</text>
 
-                    <!-- Deaf -->
-                    <div class="flow-col deaf">
-                        <div class="flow-col-header">🤟 Deaf User — Haptic + Screen Pipeline</div>
-                        <div class="flow-steps">
+                        <!-- Arrow 3 -->
+                        <text x="426" y="62" text-anchor="middle" font-size="8.5" font-weight="600"
+                            fill="#42a5f5">hazards[]</text>
+                        <line x1="410" y1="70" x2="439" y2="70" stroke="#42a5f5" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="439,66 447,70 439,74" fill="#42a5f5" />
 
-                            <div class="step step-hw">
-                                <span class="step-num">01</span>
-                                <div class="step-content">
-                                    <div class="step-title">ESP32-CAM + PIR Sensor — Dual Capture</div>
-                                    <div class="step-desc">JPEG frame + distance reading fused and sent to backend
-                                        together.</div>
-                                </div>
-                            </div>
-                            <div class="connector"><svg width="12" height="14">
-                                    <line x1="6" y1="0" x2="6" y2="10" stroke="#bbb" stroke-width="1.5"
-                                        stroke-dasharray="3,2" />
-                                    <polygon points="3,10 9,10 6,14" fill="#bbb" />
-                                </svg></div>
+                        <!-- Node 4: Python Backend -->
+                        <rect x="447" y="38" width="128" height="70" rx="6" fill="#fff" stroke="#ce93d8"
+                            stroke-width="1.5" />
+                        <text x="511" y="58" text-anchor="middle" font-size="10" font-weight="700" fill="#7b1fa2">🐍
+                            Python Backend</text>
+                        <text x="511" y="73" text-anchor="middle" font-size="8.5" fill="#888">picks top hazard</text>
+                        <text x="511" y="87" text-anchor="middle" font-size="8" fill="#bbb">formats speech text</text>
 
-                            <div class="step step-api">
-                                <span class="step-num">02</span>
-                                <div class="step-content">
-                                    <div class="step-title">Gemini Vision API — Object + Context</div>
-                                    <div class="step-desc">Identifies class and relative position of each detected
-                                        hazard.</div>
-                                </div>
-                            </div>
-                            <div class="connector"><svg width="12" height="14">
-                                    <line x1="6" y1="0" x2="6" y2="10" stroke="#bbb" stroke-width="1.5"
-                                        stroke-dasharray="3,2" />
-                                    <polygon points="3,10 9,10 6,14" fill="#bbb" />
-                                </svg></div>
+                        <!-- Arrow 4 -->
+                        <text x="592" y="62" text-anchor="middle" font-size="8.5" font-weight="600"
+                            fill="#42a5f5">speech text</text>
+                        <line x1="575" y1="70" x2="604" y2="70" stroke="#42a5f5" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="604,66 612,70 604,74" fill="#42a5f5" />
 
-                            <div class="step step-proc">
-                                <span class="step-num">03</span>
-                                <div class="step-content">
-                                    <div class="step-title">Python — Alert Priority + Dual Signal</div>
-                                    <div class="step-desc">Maps hazard distance → PWM intensity for piezo; formats
-                                        screen warning string.</div>
-                                </div>
-                            </div>
-                            <div class="connector"><svg width="12" height="14">
-                                    <line x1="6" y1="0" x2="6" y2="10" stroke="#bbb" stroke-width="1.5"
-                                        stroke-dasharray="3,2" />
-                                    <polygon points="3,10 9,10 6,14" fill="#bbb" />
-                                </svg></div>
+                        <!-- Node 5: ElevenLabs TTS — BLIND ONLY, thicker border + badge -->
+                        <rect x="612" y="32" width="122" height="82" rx="6" fill="#e8f5e9" stroke="#2e7d32"
+                            stroke-width="2.5" />
+                        <text x="673" y="55" text-anchor="middle" font-size="10" font-weight="700" fill="#1b5e20">🎙
+                            ElevenLabs TTS</text>
+                        <text x="673" y="70" text-anchor="middle" font-size="8.5" fill="#388e3c">speech synthesis</text>
+                        <text x="673" y="83" text-anchor="middle" font-size="8" fill="#4caf50">&lt;75 ms latency</text>
+                        <!-- BLIND ONLY badge -->
+                        <rect x="637" y="90" width="72" height="14" rx="3" fill="#2e7d32" />
+                        <text x="673" y="101" text-anchor="middle" font-size="7.5" font-weight="700" fill="#fff">👁
+                            BLIND ONLY</text>
 
-                            <div class="step step-out-d">
-                                <span class="step-num">04a</span>
-                                <div class="step-content">
-                                    <div class="step-title">〰 Piezoelectric Haptic Buzz</div>
-                                    <div class="step-desc">PWM signal to piezo disk; buzz intensity ∝ proximity to
-                                        hazard.</div>
-                                </div>
-                            </div>
-                            <div class="connector"><svg width="12" height="14">
-                                    <line x1="6" y1="0" x2="6" y2="10" stroke="#bbb" stroke-width="1.5"
-                                        stroke-dasharray="3,2" />
-                                    <polygon points="3,10 9,10 6,14" fill="#bbb" />
-                                </svg></div>
+                        <!-- Arrow 5 -->
+                        <text x="750" y="62" text-anchor="middle" font-size="8.5" font-weight="600" fill="#4caf50">MP3
+                            audio</text>
+                        <line x1="734" y1="70" x2="757" y2="70" stroke="#4caf50" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="757,66 765,70 757,74" fill="#4caf50" />
 
-                            <div class="step step-out-d">
-                                <span class="step-num">04b</span>
-                                <div class="step-content">
-                                    <div class="step-title">🖥 S3 Box Screen Warning + Three.js Flash</div>
-                                    <div class="step-desc">"CAR – 10 FT LEFT" displayed; orb flashes red at hazard
-                                        proximity.</div>
-                                </div>
-                            </div>
+                        <!-- Node 6: Audio Output -->
+                        <rect x="765" y="42" width="85" height="62" rx="6" fill="#c8e6c9" stroke="#4caf50"
+                            stroke-width="2" />
+                        <text x="807" y="68" text-anchor="middle" font-size="11" font-weight="700" fill="#1b5e20">🔊
+                            AUDIO</text>
+                        <text x="807" y="84" text-anchor="middle" font-size="8" fill="#2e7d32">spoken alert</text>
+                        <text x="807" y="97" text-anchor="middle" font-size="8" fill="#388e3c">to speaker</text>
 
-                        </div>
-                    </div>
-
+                    </svg>
                 </div>
+
+                <!-- ── 4B: DEAF pipeline SVG ── -->
+                <div
+                    style="margin-bottom:10px;font-size:11px;font-weight:700;color:#880e4f;letter-spacing:.5px;text-transform:uppercase;">
+                    🤟 Deaf User — Haptic + Screen Pipeline</div>
+                <div class="flowchart-wrap">
+                    <svg viewBox="0 0 860 190" xmlns="http://www.w3.org/2000/svg"
+                        style="width:100%;height:auto;font-family:'Inter',sans-serif;">
+
+                        <!-- Background -->
+                        <rect x="0" y="0" width="860" height="190" fill="#fce4ec" rx="6" />
+
+                        <!-- ─── Node 1: Real World ─── -->
+                        <rect x="10" y="28" width="100" height="68" rx="6" fill="#fff" stroke="#f48fb1"
+                            stroke-width="1.5" />
+                        <text x="60" y="52" text-anchor="middle" font-size="10" font-weight="700" fill="#c2185b">🌍 Real
+                            World</text>
+                        <text x="60" y="67" text-anchor="middle" font-size="8.5" fill="#888">street scene</text>
+                        <text x="60" y="80" text-anchor="middle" font-size="8" fill="#bbb">live video</text>
+
+                        <!-- Arrow 1 label ABOVE line -->
+                        <text x="122" y="55" text-anchor="middle" font-size="8" fill="#f06292"
+                            font-weight="600">JPEG</text>
+                        <line x1="110" y1="62" x2="137" y2="62" stroke="#f06292" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="137,58 145,62 137,66" fill="#f06292" />
+
+                        <!-- ─── Node 2: ESP32-CAM + PIR ─── -->
+                        <rect x="145" y="18" width="120" height="82" rx="6" fill="#fff" stroke="#f48fb1"
+                            stroke-width="1.5" />
+                        <text x="205" y="42" text-anchor="middle" font-size="10" font-weight="700" fill="#c2185b">📷
+                            ESP32-CAM</text>
+                        <text x="205" y="56" text-anchor="middle" font-size="9" font-weight="600" fill="#c2185b">+ 📡
+                            PIR Sensor</text>
+                        <text x="205" y="71" text-anchor="middle" font-size="8.5" fill="#888">frame + distance</text>
+                        <text x="205" y="84" text-anchor="middle" font-size="8" fill="#bbb">dual capture</text>
+
+                        <!-- Arrow 2 label ABOVE line -->
+                        <text x="278" y="55" text-anchor="middle" font-size="8" fill="#f06292" font-weight="600">stream
+                            + ft</text>
+                        <line x1="265" y1="62" x2="292" y2="62" stroke="#f06292" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="292,58 300,62 292,66" fill="#f06292" />
+
+                        <!-- ─── Node 3: Gemini ─── -->
+                        <rect x="300" y="28" width="120" height="68" rx="6" fill="#fff" stroke="#f48fb1"
+                            stroke-width="1.5" />
+                        <text x="360" y="52" text-anchor="middle" font-size="10" font-weight="700" fill="#c2185b">☁️ Google Vision API</text>
+                        <text x="360" y="67" text-anchor="middle" font-size="8.5" fill="#888">object + direction</text>
+                        <text x="360" y="80" text-anchor="middle" font-size="8" fill="#bbb">returns JSON</text>
+
+                        <!-- Arrow 3 label ABOVE line -->
+                        <text x="437" y="55" text-anchor="middle" font-size="8" fill="#f06292"
+                            font-weight="600">hazards[]</text>
+                        <line x1="420" y1="62" x2="447" y2="62" stroke="#f06292" stroke-width="1.5"
+                            stroke-dasharray="4,3" />
+                        <polygon points="447,58 455,62 447,66" fill="#f06292" />
+
+                        <!-- ─── Node 4: Python Backend ─── -->
+                        <rect x="455" y="28" width="130" height="68" rx="6" fill="#fff" stroke="#f48fb1"
+                            stroke-width="1.5" />
+                        <text x="520" y="50" text-anchor="middle" font-size="10" font-weight="700" fill="#c2185b">🐍
+                            Python Backend</text>
+                        <text x="520" y="65" text-anchor="middle" font-size="8.5" fill="#888">maps distance → PWM</text>
+                        <text x="520" y="79" text-anchor="middle" font-size="8" fill="#bbb">formats screen string</text>
+
+                        <!-- Fork line down -->
+                        <line x1="520" y1="96" x2="520" y2="116" stroke="#e91e63" stroke-width="1.5"
+                            stroke-dasharray="3,3" />
+                        <!-- Horizontal bus -->
+                        <line x1="520" y1="116" x2="790" y2="116" stroke="#e91e63" stroke-width="1.5"
+                            stroke-dasharray="3,3" />
+                        <!-- Down to Haptic -->
+                        <line x1="650" y1="116" x2="650" y2="136" stroke="#e91e63" stroke-width="1.5"
+                            stroke-dasharray="3,3" />
+                        <polygon points="646,136 654,136 650,144" fill="#e91e63" />
+                        <!-- Down to Screen -->
+                        <line x1="790" y1="116" x2="790" y2="136" stroke="#e91e63" stroke-width="1.5"
+                            stroke-dasharray="3,3" />
+                        <polygon points="786,136 794,136 790,144" fill="#e91e63" />
+
+                        <!-- Fork label on the bus line -->
+                        <text x="520" y="111" text-anchor="middle" font-size="8" fill="#e91e63" font-weight="600">PWM
+                            intensity + screen cmd</text>
+
+                        <!-- ─── Node 5a: Piezo Haptic ─── -->
+                        <rect x="610" y="144" width="80" height="44" rx="5" fill="#fce4ec" stroke="#e91e63"
+                            stroke-width="2" />
+                        <text x="650" y="163" text-anchor="middle" font-size="9" font-weight="700" fill="#880e4f">〰
+                            HAPTIC</text>
+                        <text x="650" y="175" text-anchor="middle" font-size="7.5" fill="#c2185b">piezo buzz</text>
+                        <!-- DEAF ONLY badge -->
+                        <rect x="622" y="181" width="56" height="12" rx="3" fill="#880e4f" />
+                        <text x="650" y="190" text-anchor="middle" font-size="6.5" font-weight="700" fill="#fff">🤟 DEAF
+                            ONLY</text>
+
+                        <!-- ─── Node 5b: Screen ─── -->
+                        <rect x="730" y="144" width="118" height="44" rx="5" fill="#fce4ec" stroke="#e91e63"
+                            stroke-width="2" />
+                        <text x="789" y="163" text-anchor="middle" font-size="9" font-weight="700" fill="#880e4f">🖥
+                            SCREEN WARNING</text>
+                        <text x="789" y="175" text-anchor="middle" font-size="7.5" fill="#c2185b">S3 Box display</text>
+                        <!-- DEAF ONLY badge -->
+                        <rect x="757" y="181" width="64" height="12" rx="3" fill="#880e4f" />
+                        <text x="789" y="190" text-anchor="middle" font-size="6.5" font-weight="700" fill="#fff">🤟 DEAF
+                            ONLY</text>
+
+                    </svg>
+                </div>
+
+
             </div>
 
             <!-- ── 5. Data Flow Note ── -->
@@ -859,7 +904,7 @@
           [ { "label": "car", "direction": "left", "distance_ft": 10, "priority": 1 }, ... ]
         </code>
                     Sorted ascending by <code style="font:11px monospace">priority</code>. Priority 1 = imminent danger.
-                    &nbsp;|&nbsp; <strong>Latency budget:</strong> Camera capture → Gemini (~800 ms) → TTS/haptic
+                    &nbsp;|&nbsp; <strong>Latency budget:</strong> Camera capture → Vision API (~800 ms) → TTS/haptic
                     dispatch (~400 ms) → output → &lt;2 s total.
                 </div>
             </div>
@@ -869,7 +914,7 @@
         <!-- ── Footer ── -->
         <div class="doc-footer">
             <span>DigiGuide · Technical Design v1.0 · SodaHacks 2026</span>
-            <span>ESP32 S3 Box 3 · Gemini · ElevenLabs · Selenium · Three.js</span>
+            <span>ESP32 S3 Box 3 · Google Vision API · ElevenLabs TTS · Three.js</span>
         </div>
 
     </div>
