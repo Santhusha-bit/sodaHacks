@@ -25,7 +25,7 @@
 ### 1. Setup Python environment
 
 ```bash
-cd /Users/Anisha/Downloads/sodaHacks
+cd /Users/[user]/Downloads/sodaHacks
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
